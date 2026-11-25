@@ -1,0 +1,730 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.15in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\emergencystretch=3em
+\usepackage[hidelinks]{hyperref}
+\usepackage{xr-hyper}
+\externaldocument[A1-]{paperA1}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{question}[theorem]{Question}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\nd}[1]{\lVert #1\rVert}
+\newcommand{\ML}{\mathrm{ML}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\todo}[1]{\textbf{[AUTHOR TO CONFIRM: #1]}}
+% number of an item of the companion paper [A1]
+\newcommand{\xA}[1]{\ref{A1-#1}}
+
+\title{Deleting speeds from $\{1,\dots,N\}$ and adding large ones:\\ the bound $1/N$, and two deleted speeds larger than $N/2$}
+\author{Vico Bonfioli\thanks{This paper was produced with substantial assistance from AI systems (Anthropic's Claude models), working under the direction of the author, who reviewed the results and takes responsibility for the contents. Statements marked Lean-verified are checked by the Lean kernel, not by the author; see the section ``Use of AI'' before the references.}}
+\date{Draft of 25 November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent\textbf{Setting.} For a finite set $V$ of positive integers (speeds) let $\ML(V)=\max_t\min_{v\in V}\nd{tv}$, with $\nd{x}$ the distance to the nearest integer; an $N$-set is \emph{tight} if $\ML=1/(N+1)$, the value of $[N]=\{1,\dots,N\}$ and the least that the Lonely Runner Conjecture allows. Goddyn and Wong replace entries $r_i$ of $[N]$ by multiples $m_ir_i$ and give a numerical condition on the $m_i$ under which the result stays tight (the \emph{acceleration}, Section~\ref{sec:intro}). Zhang's Question~8.1 asks whether every tight set obtained from $[N]$ by replacing two speeds greater than $N/2$ by two larger speeds arises from this acceleration.
+
+\medskip\noindent\textbf{Result (Theorem~\ref{thm:Q}, Corollary~\ref{cor:Q}).} Let $r_1<r_2$ be coprime speeds in $(N/2,N]$, $N\ge4$, and let $w_1\ne w_2$ be integers larger than $N$. Then $([N]\setminus\{r_1,r_2\})\cup\{w_1,w_2\}$ is not tight. Thus for coprime removed speeds the class of tight modifications is empty, which answers Question~8.1 in the coprime case; the case of a common factor, where tight sets exist, is not settled (Conjecture T-X, Section~\ref{sec:open}). If each $w_i$ is a multiple of one $r_i$ then $\ML\ge1/N$ ($\ge2/9$ for $N=4$); if one $w_i$ is a multiple of $r_1r_2$ only $\ML>1/(N+1)$ is proved. For $N\ge10$ the proof of Theorem~\ref{thm:Q}(i) is written out in Section~\ref{sec:Q} (Lemmas~\ref{lem:time}, \ref{lem:caseI}, \ref{lem:caseII}; a Lean counterpart is listed in Table~\ref{tab:status}); for $4\le N\le9$ it rests on Lean kernel certificates not reproduced in the text; the combination into Corollary~\ref{cor:Q} is by hand.
+
+\medskip\noindent\textbf{Also (Theorem~\ref{thm:S}; new only for $k\ge2$).} Let $r\le N-2$ be a deleted speed, $k\ge1$ and $T_k=3k(k+1)+1$. If the interval $[N+1+r,2N-1]$ contains $T_k$ pairwise coprime integers, each coprime to $r$ (we then call $(N,r)$ \emph{$k$-rich}), then every set $V$ that omits $r$, has arbitrary other elements in $[1,N]$ and at most $k$ elements larger than $N$ satisfies $\ML(V)\ge1/N$, strictly above $1/(N+1)$. The hypothesis holds for every $r\le N/2$ from an explicit threshold (for example $N\ge222$ for $k=2$). The constant $T_k$ is a sieve constant and is not claimed to be optimal; it can be replaced by $8k+1$ (Theorem~\ref{thm:L}). These statements are verified in Lean~4; Section~\ref{sec:status} tabulates the status of every statement. For $k=1$ the conclusion is the one-entry case of the companion~\cite{A1}, which this paper quotes (thresholds $14$, $21$) and which uses Theorem~\ref{thm:W} below for $N\ge222$; the paper is readable alone.
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+
+\subsection{Background and summary}
+Deleting speeds from $[N]$ can only raise $\ML$, and adding speeds can only lower it. The Lonely Runner Conjecture of Wills and Cusick~\cite{W} says that $N$ distinct speeds always leave a time at which every runner is at distance at least $1/(N+1)$ from an integer, and $[N]$ shows that this is sharp. Goddyn and Wong~\cite{GW} and Zhang~\cite{Z} asked which sets obtained from $[N]$ by replacing some speeds by larger ones are still tight. A basic family is the \emph{Goddyn--Wong acceleration}: replace entries $r_i$ of $[N]$ by $m_ir_i$ with integers $m_i\ge2$; the result is tight under a condition $m_is_i\le\beta_i$ on each entry, where $s_i=N+1-r_i$ and $\beta_i$ is the least integer $b\ge s_i$ coprime to $r_i$ (the case of one entry is Theorem~\xA{thm:V} of the companion paper~\cite{A1}). \emph{Zhang's Question~8.1 asks whether every tight modification that replaces two speeds greater than $N/2$ by two larger speeds comes from this acceleration.} This paper has two groups of results. First, if one speed $r\le N/2$ is deleted and at most $k$ speeds larger than $N$ are added, the loneliness stays at least $1/N$, which is strictly above the value $1/(N+1)$ of the conjecture, provided the window $[N+1+r,2N-1]$ holds enough pairwise coprime integers; this is automatic for large $N$ (Theorems~\ref{thm:S} and~\ref{thm:thr}). Second, for two deleted speeds greater than $N/2$ that are coprime, no tight set of this form exists for $N\ge4$, and this settles the coprime case of Zhang's question (Theorem~\ref{thm:Q} and Corollary~\ref{cor:Q}, with the precise statement after the corollary); for a common factor the exact criterion of Theorem~\ref{thm:T} replaces the earlier partial statements.
+
+\paragraph{Dependence on the companion papers.}
+This paper is readable alone: every proof is given here, or is a Lean statement cited from the library. The companion~\cite{A1} is quoted, not used in any proof here: for the one-entry value (its Theorem~\xA{thm:V}, which is the case of one entry of Theorem~\ref{thm:M}) and for the exact thresholds $14$ and $21$ (its Theorem~\xA{thm:OE} and Proposition~\xA{prop:N0}); in the other direction~\cite{A1} uses Theorem~\ref{thm:W} here for $N\ge222$.
+
+\paragraph{Relation to the case $k=1$.}
+For $k=1$ (one deleted speed $r\le N/2$, one added speed $w$) the bound $\ML\ge1/N$ is Theorem~\xA{thm:OE} of the companion paper~\cite{A1} for every $N\ge14$ and every $w>N$, with $14$ sharp. For $w\ge N(2N-1)$ it already follows from the deletion value $\ML([N]\setminus\{r\})=2/D_0$ (Liu's Theorem~18, $D_0$ the least integer $\ge N+1+r$ coprime to $r$) combined with Kravitz's Lemma~8.4, as recorded in~\cite[Remark~\xA{rem:L84}]{A1}; the range of $w$ that is new there is $N<w<N(2N-1)$. Goddyn and Wong~\cite[Thm.~2.4]{GW} show that for fixed $r$ only finitely many replacements $r\to w$ with $r\nmid w$ are tight, and Zhang~\cite{Z} classifies the tight one-entry modifications; neither states the bound $1/N$ for all $w$. So for $k=1$ the threshold $79$ of Theorem~\ref{thm:thr} is superseded by $14$, and what is new here is $k\ge2$ and the arbitrary retained subset of $[N]\setminus\{r\}$ in Theorem~\ref{thm:S}.
+
+
+\subsection{Conventions and notation}\label{sec:conv}
+Throughout, $N$ is the number of speeds of the base set $[N]=\{1,\dots,N\}$, and for $|V|=N$ the Lonely Runner Conjecture reads $\ML(V)\ge1/(N+1)$~\cite{W}; \emph{tight} sets are those of the abstract. In Goddyn--Wong~\cite{GW}, Zhang~\cite{Z} and Peng~\cite{P} the letter $n$ means $N+1$ (their $[n-1]$ is our $[N]$); in Fan--Sun~\cite{FS} and Kravitz~\cite{K} it means $N$. This paper uses $N$ only. The letter $k$ is the bound on the \emph{number of added speeds}, and $|V|$ is a third quantity: $V$ is an arbitrary finite set with $|V|\le N-1+k$ in Theorem~\ref{thm:S}. The bound $\ML(V)\ge1/N$ is a statement about the base $[N]$; it exceeds the value $1/(|V|+1)$ that the Lonely Runner Conjecture predicts whenever $|V|\ge N$, and is not comparable with it for $|V|<N$. In this paper $k$ always has this one meaning; the different use of the letter $k$ in some Lean declarations is recorded only in Section~\ref{sec:lean}.
+
+For finite $V\subset\ZZ_{>0}$, $\ML(V)=\max_t\min_{v\in V}\nd{tv}$, a maximum because the function is continuous and $1$-periodic (Lean uses the supremum). The value does not change if $V$ is multiplied by an integer $c\ge1$, and $V\subseteq V'$ implies $\ML(V)\ge\ML(V')$. Theorems below apply to \emph{vectors} of integers (repeats allowed); this adds nothing, since repeats do not change $\ML$.
+
+\paragraph{Added speeds, window, richness.}
+Fix $N\ge3$, $r$ with $1\le r\le N-2$ and $k\ge1$. An \emph{added speed} is an element of $V$ larger than $N$. A finite set $V\subset\ZZ_{>0}$ is \emph{$(N,r,k)$-admissible} if $r\notin V$ and $V$ has at most $k$ added speeds. Its elements in $[N]$ may be any subset of $[N]\setminus\{r\}$: speeds may be deleted as well as added, so $V$ need not be $[N]\setminus\{r\}$ plus $k$ speeds. The \emph{window} is the interval $I(N,r)=[N+1+r,2N-1]$. Put $T_k=3k(k+1)+1$ ($7,19,37,61,\dots$): $k$ added speeds spoil at most $3k(k+1)$ moduli of a pairwise coprime family (Lemma~\ref{lem:S}), and one more modulus leaves a clean one; see the paragraph after Theorem~\ref{thm:S}. We say that \emph{$(N,r)$ is $k$-rich} if $I(N,r)$ contains $T_k$ pairwise coprime integers, each coprime to $r$. If $I(N,r)$ contains $T_k$ primes then $(N,r)$ is $k$-rich, since primes larger than $r$ are coprime to $r$ and to each other. This is the only name used for this hypothesis.
+
+For a modulus $D\in I(N,r)$ with $\gcd(D,r)=1$ let $a$ be an integer with $ar\equiv1\pmod D$ and put $t_0=a/D$ (the \emph{witness time}; Lemma~\ref{lem:wit}). For a deleted speed $r\in(N/2,N]$ put $s=N+1-r$ and let $\beta(N,r)$ be the least integer $b\ge s$ with $\gcd(b,r)=1$. For a set $R\subseteq[N]$ of deleted speeds and a finite set $W$ of integers larger than $N$, $V=([N]\setminus R)\cup W$; in Theorem~\ref{thm:Q} $R=\{r_1<r_2\}$, $W=\{w_1,w_2\}$, $s_i=N+1-r_i$, and $w_i=m_ir_i$ means that $w_i$ is the multiple of $r_i$ with integer multiplier $m_i\ge2$. ``Tight'' is used only for sets with exactly $N$ elements; for such a set the Lonely Runner Conjecture reads $\ML\ge1/(N+1)$, so ``tight'' and ``$\ML\le1/(N+1)$'' differ only by a counterexample to the conjecture. Where a theorem below is an equivalence with $\ML\le1/(N+1)$ (Theorem~\ref{thm:T}) it is stated in that form.
+
+\paragraph{Notation.}
+\begin{center}
+\small
+\begin{tabular}{l p{0.7\textwidth}}
+\toprule
+symbol & meaning \\
+\midrule
+$N$, $[N]$, $r$ & number of base speeds; $\{1,\dots,N\}$; the deleted speed \\
+$k$, $T_k$ & number of added speeds; $3k(k+1)+1$ \\
+$V$, $W$ & the set of speeds; its added speeds $\{w_1<\dots<w_m\}$ ($m\le k$) \\
+$I(N,r)$, $D$, $a$, $t_0$ & window $[N+1+r,2N-1]$; a modulus in it coprime to $r$; $ar\equiv1\pmod D$; $t_0=a/D$ \\
+$N^*(k)$, $N_0(k)$ & the sieve threshold of the proof, Table~\ref{tab:thr} (Lean-proved for $k\le12$); the exact threshold, Remark~\ref{rem:Nzero} \\
+$R$, $r_1<r_2$, $\gcd$ & two deleted speeds in $(N/2,N]$ (Section~\ref{sec:Q}); their gcd \\
+$w_i=m_ir_i$ & inserted speeds as multiples of the deleted ones (Theorem~\ref{thm:Q}) \\
+$\beta(N,r)$, $s_i$ & least $b\ge N+1-r$ coprime to $r$; $N+1-r_i$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The notation of Section~\ref{sec:Q} is collected in a second table at the start of that section.
+
+\subsection{Worked instances}
+\paragraph{An instance of Theorem~\ref{thm:S}.}
+Take $N=30$, $r=7$, $k=1$. The window is $I(30,7)=[38,59]$ and $T_1=7$. The seven integers $38=2\cdot19$, $39=3\cdot13$, $41$, $43$, $47$, $53$, $59$ lie in the window, are pairwise coprime (their prime factors $2,19,3,13,41,43,47,53,59$ are distinct) and are coprime to $7$; so $(30,7)$ is $1$-rich and Theorem~\ref{thm:S} applies (Theorem~\ref{thm:thr} does not: $30<N^*(1)=79$). Let $V=([30]\setminus\{7\})\cup\{48\}$. An added speed $w$ spoils the witness time of a modulus $D$ exactly when $D$ divides $w$, $w-7$ or $w+7$ (Lemma~\ref{lem:wit}); here $w=48$, $w-7=41$, $w+7=55=5\cdot11$, and among the seven moduli only $D=41$ divides one of these numbers. For $D=41$ we have $7\cdot6=42\equiv1$, so $a=6$ and $\nd{48\cdot6/41}=\nd{288/41}=1/41<1/30$: the time $6/41$ fails. For $D=43$: $7\cdot37=259=6\cdot43+1$, so $a=37$ and $t_0=37/43$; the residue of $48$ modulo $43$ is $5\notin\{0,7,36\}$, and every $x\in[30]\setminus\{7\}$ avoids these classes since $x\le30$ and $43-7=36>30$. Hence every speed of $V$ is at distance at least $2/43>1/30$ from an integer at $t_0$, and $\ML(V)\ge2/43$. The proof of Theorem~\ref{thm:S} only asserts that some modulus among the seven is clean; here six are.
+
+\paragraph{An instance of Theorem~\ref{thm:L}.}
+Take $k=1$, $N=140$, $r=1$. The window is $I(140,1)=[142,279]$, with $138\ge8k+1=9$ elements. Choose for $F$ the nine integers $142$, $143$, $149$, $151$, $157$, $163$, $167$, $173$, $179$: they are pairwise coprime ($142=2\cdot71$, $143=11\cdot13$, the other seven are primes) and, as $r=1$, coprime to $r$. For $r=1$ the inverse is $a=1$ for every $D\in F$, so the witness time is $1/D$; put $d=1/((2N-1)N^2)=1/5\,468\,400$ and $J(D)=[1/D-d,1/D+d]$. Let $V=([140]\setminus\{1\})\cup\{141\}$; the added speed is $w=141>N$. By Lemma~\ref{lem:L2} the set $\{t\in J(D):\nd{141t}<1/140\}$ can be nonempty only if $D$ divides $141-e$ for an integer $|e|<141/N^2+2<3$, that is, only if $D$ divides one of $139,\dots,143$; in $F$ these are $D=142$ and $D=143$. For $D=142$: at $t=1/142+h$ with $|h|\le d$ one has $\nd{141t}\le1/142+141d<1/140$, because $1/140-1/142=1/9940>141d$; so the whole window is covered, $\mathrm{cov}_{141}(142)=1$. For $D=143$: $\nd{141t}\ge2/143-141d>1/140$ on $J(143)$, so $\mathrm{cov}_{141}(143)=0$. For the seven remaining moduli $\nd{141t}\ge\nd{141/D}-141d$ on $J(D)$, and $\nd{141/D}$ equals $8/149$, $10/151$, $16/157$, $22/163$, $26/167$, $32/173$, $38/179$ for $D=149,151,157,163,167,173,179$, each far above $1/140+141d$, so their coverages are $0$. (The distances $\nd{141/D}$ of the nine moduli, in the order of $F$, are $1/142,\ 2/143$ and the seven above; only the first is below $1/140$.) The coverages sum to $1\le8$, as Lemma~\ref{lem:L3} predicts. The argument ends here, because $D=143$ is not dead: its coverage is $0<1$, so $J(143)$ contains times good for the added speed, and at the witness time $t=1/143$ itself every speed of $V$ is at distance at least $2/143>1/140$ from an integer, namely $\min(x,143-x)/143\ge2/143$ for the retained speeds $x\in\{2,\dots,140\}$ (equality at $x=2$) and $143-141=2$ for the added speed $141$. Hence $\ML(V)\ge2/143$.
+
+\paragraph{The hypothesis cannot be dropped.}
+Take $N=13$, $r=6$, $k=1$ and $w=69$. The window is $[20,25]$, which has $6<T_1=7$ integers, so $(13,6)$ is not $1$-rich, and $\ML\bigl(([13]\setminus\{6\})\cup\{69\}\bigr)=3/40<1/13$ (computed, exactly; Remark~\ref{rem:sharp}). So the conclusion $\ML\ge1/N$ of Theorem~\ref{thm:S} fails when richness fails, for $N=13$.
+
+\subsection{Results}\label{sec:results}
+\begin{theorem}[Robustness of the retained speeds]\label{thm:S}
+Let $k\ge1$, $N\ge3$, $1\le r\le N-2$, with $(N,r)$ $k$-rich. Then $\ML(V)\ge1/N$ for every $(N,r,k)$-admissible set $V$.
+\end{theorem}
+The number of retained speeds and which of them are present play no role. \emph{Status.} Lean, standard axioms (Table~\ref{tab:status}); the prime-count form was also checked by hand. The Lean hypothesis counts the indices of added speeds with multiplicity, which is a stronger hypothesis than counting distinct values; the set statement follows from it.
+
+\paragraph{Why a coprime window forces a good time.} Take a modulus $D$ in the window $[N+1+r,2N-1]$ coprime to $r$, an integer $a$ with $ar\equiv1\pmod D$, and the \emph{witness time} $t_0=a/D$. A speed $x$ is at distance $\nd{xa/D}\ge2/D$ from an integer at $t_0$ unless $x\equiv0,\pm r\pmod D$, and no retained speed $x\le N$ has this property ($r$ is deleted and $D-r>N$); since $D\le2N-1$, $2/D>1/N$. An added speed $w$ spoils $t_0$ exactly when $D$ divides one of $w$, $w-r$, $w+r$. If the moduli are pairwise coprime, a positive integer below $N^{2j+1}$ is divisible by at most $2j$ of them (their product divides it), so the $j$-th added speed spoils at most $3\cdot2j$ moduli, all $k$ together at most $3k(k+1)$, and among $T_k=3k(k+1)+1$ moduli one is clean, by pigeonhole. An added speed too large for this count (more than $8kN$ times the previous one) is handled by a measure argument in a short window around $t_0$. The proof is in Section~\ref{sec:proofS}.
+
+\begin{theorem}[Thresholds]\label{thm:thr}
+Let $1\le r$ with $2r\le N$ and let $V$ be $(N,r,k)$-admissible. Then $\ML(V)\ge1/N$ in each of the following cases: (a) $1\le k\le12$ and $N\ge N^*(k)$ of Table~\ref{tab:thr}; (b) $k\ge1$ and $N\ge\max\bigl(10^5,\,67\,T_k^2\bigr)$; (c) $1\le k\le30$ and $N\ge M(k)$ of Table~\ref{tab:cheb}.
+\end{theorem}
+The thresholds are thresholds for the hypothesis of Theorem~\ref{thm:S}, not for its conclusion. For every $k\le12$, Lean proves that $(N,r)$ is $k$-rich for all $r\le N/2$ once $N\ge N^*(k)$, by counting primes in $(\frac32N,2N)$ (a prime count suffices because distinct primes are pairwise coprime); for $k\le6$, $N^*(k)$ is the least $N$ from which that prime count stays at least $T_k$ (computed). The values of $N$ at which the conclusion $\ML\ge1/N$ itself starts to hold are smaller: $14$ for $k=1$ and $21$ for $k=2$ (Theorem~\xA{thm:OE} and Proposition~\xA{prop:N0} of~\cite{A1}, where they are stated and proved; Remark~\ref{rem:Nzero} below). Part (c) stops at $k=30$ because the Lean table \texttt{MCheb} has $k\le30$; Table~\ref{tab:lin} also lists $M(k)$ for $31\le k\le40$, computed and not Lean, and Theorem~\ref{thm:L}(b) is Lean for every $k\le40$ with the thresholds $M'(k)$.
+
+\paragraph{Two thresholds with different meanings.}
+$N_0(k)$ is the \emph{exact} threshold, a property of the problem: one more than the largest $N$ for which some $r\le N/2$ and some set of at most $k$ added speeds give $\ML<1/N$, that is, the least $N_1$ with $\ML\ge1/N$ for every $N\ge N_1$ (Remark~\ref{rem:Nzero}; defined and determined for $k=1,2$ in~\cite{A1}). $N^*(k)$ is the \emph{sieve} threshold of the proof of Theorem~\ref{thm:S}, a property of one argument: a value from which the primes in $(\frac32N,2N)$ alone make every $r\le N/2$ $k$-rich. This is its only definition. For $k\le12$ it is the value of Table~\ref{tab:thr}, for which Lean proves richness for all $N\ge N^*(k)$; for $k\le6$ it is moreover the least $N$ from which $\pi(2N)-\pi(\lfloor\frac32N\rfloor)\ge T_k$ for all larger $N$, a minimality that is computed by a sieve to $2\cdot10^7$ and is not claimed for $7\le k\le12$. For $k\ge13$ (and for the linear count $8k+1$) the values of Table~\ref{tab:lin} are computed by a shorter sieve, to $6\cdot10^6$, and the count is assumed, not proved, to stay at least $T$ beyond it; for $k\le12$ no value depends on the shorter run, because Lean covers all $N$.
+
+Why $N^*(k)\ge N_0(k)$, and why they differ. $N^*(k)$ is a valid threshold for the conclusion $\ML\ge1/N$, and $N_0(k)$ is the least valid one, so $N^*(k)\ge N_0(k)$. They differ because Theorem~\ref{thm:S} needs $k$-richness of $(N,r)$ for every $r\le N/2$ at once, and the sieve certifies richness only through primes. Richness is sufficient and not necessary. At $N=30$, $r=7$ (the worked instance above) the pair is $1$-rich although $30<N^*(1)=79$; for other $r$ with $N<79$ the window may contain no seven pairwise coprime integers coprime to $r$, and the conclusion still holds. The exact values $14$ and $21$ come from a different method in~\cite{A1} (for $k=1$ the deletion value $2/D_0$ with Liu's theorem and Kravitz's lemma; for $k=2$ an exact finite computation). So for $N_0(k)\le N<N^*(k)$ the conclusion holds, and Theorem~\ref{thm:S} proves it for those $r$ for which $(N,r)$ is $k$-rich, but for some $r$ its hypothesis cannot be verified by the prime count.
+\begin{center}
+\small
+\begin{tabular}{r r r}
+\toprule
+$k$ & $N_0(k)$, exact & $N^*(k)$, sieve \\
+\midrule
+$1$ & $14$ & $79$ \\
+$2$ & $21$ & $222$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{r r r r}
+\toprule
+$k$ & $T_k=3k(k+1)+1$ & $N^*(k)$ & $\max(10^5,67T_k^2)$ \\
+\midrule
+1 & 7 & 79 & 100000 \\
+2 & 19 & 222 & 100000 \\
+3 & 37 & 517 & 100000 \\
+4 & 61 & 895 & 249307 \\
+5 & 91 & 1410 & 554827 \\
+6 & 127 & 2067 & 1080643 \\
+7 & 169 & 2920 & 1913587 \\
+8 & 217 & 3937 & 3154963 \\
+9 & 271 & 4891 & 4920547 \\
+10 & 331 & 6240 & 7340587 \\
+11 & 397 & 7570 & 10559803 \\
+12 & 469 & 9060 & 14737387 \\
+\bottomrule
+\end{tabular}
+\caption{Thresholds of Theorem~\ref{thm:thr}. For every $k\le12$, Lean proves that $(N,r)$ is $k$-rich for all $N\ge N^*(k)$ and all $r\le N/2$. For $k=1,\dots,6$ the value $N^*(k)$ is in addition the least $N$ from which the prime count $\pi(2N)-\pi(\lfloor3N/2\rfloor)$ stays at least $T_k$; that minimality is computed (sieve to $2\cdot10^7$; Table~\ref{tab:lin} uses a sieve to $6\cdot10^6$, see the definition of $N^*(k)$ in the paragraph on two thresholds) and is not a Lean statement. No minimality is claimed for $k=7,\dots,12$. The true thresholds for $\ML\ge1/N$ may be smaller: there are failures at $N=13$ ($k=1$), $N=20$ ($k=2$) and $N=29$ ($k=3$), see Remark~\ref{rem:sharp}.}
+\label{tab:thr}
+\end{table}
+
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{r r r | r r r}
+\toprule
+$k$ & $T_k$ & $M(k)$ & $k$ & $T_k$ & $M(k)$ \\
+\midrule
+1 & 7 & 11280 & 16 & 817 & 101748 \\
+2 & 19 & 12360 & 17 & 919 & 112764 \\
+3 & 37 & 13980 & 18 & 1027 & 131616 \\
+4 & 61 & 17424 & 19 & 1141 & 144612 \\
+5 & 91 & 20304 & 20 & 1261 & 158292 \\
+6 & 127 & 23760 & 21 & 1387 & 172656 \\
+7 & 169 & 27792 & 22 & 1519 & 187704 \\
+8 & 217 & 34656 & 23 & 1657 & 203436 \\
+9 & 271 & 40164 & 24 & 1801 & 219852 \\
+10 & 331 & 46284 & 25 & 1951 & 236952 \\
+11 & 397 & 53016 & 26 & 2107 & 268440 \\
+12 & 469 & 60360 & 27 & 2269 & 287880 \\
+13 & 547 & 72588 & 28 & 2437 & 308040 \\
+14 & 631 & 81660 & 29 & 2611 & 328920 \\
+15 & 721 & 91380 & 30 & 2791 & 350520 \\
+\bottomrule
+\end{tabular}
+\caption{The Chebyshev thresholds $M(k)$ of Theorem~\ref{thm:thr}(c): $M(k)$ is the least $M$ such that $6\ell(T_k+3\ell+60)+1200\le N$, with $\ell=\lfloor\log_2N\rfloor+2$, holds for every $N\ge M$ (the Lean definition \texttt{MCheb}, evaluated by exact computation for $N\le2^{23}$ and certified in Lean by kernel evaluation of the finitely many cases it needs). For $k\le12$ one has $M(k)>N^*(k)$ of Table~\ref{tab:thr}; for $13\le k\le30$ this table is the only threshold proved here. For $k\le30$, $M(k)\le\max(10^5,67T_k^2)$ (Lean: \texttt{mcheb\_le\_ncheb}).}
+\label{tab:cheb}
+\end{table}
+
+By \emph{rigidity} we mean that a set with $\ML$ below $1/N$ is forced to contain $\{1,\dots,\lfloor N/2\rfloor\}$ and to account for each missing larger speed by an added speed.
+\begin{corollary}[Rigidity]\label{cor:S}
+Let $k\ge1$ and $N$ satisfy (a), (b) or (c) of Theorem~\ref{thm:thr}. Let $V$ be a finite set of positive integers with at most $k$ elements larger than $N$ and $\ML(V)<1/N$. Then (a) $\{1,\dots,\lfloor N/2\rfloor\}\subseteq V$; (b) every $r$ with $N/2<r\le N$ and $r\notin V$ divides some element of $V$ larger than $N$ (this part needs neither a bound on the number of large elements nor any condition on $N$ beyond $N<2r$).
+\end{corollary}
+
+\begin{theorem}[Linear count]\label{thm:L}
+Let $k\ge1$, $N\ge3$, $1\le r\le N-2$, and suppose that $I(N,r)$ contains $8k+1$ pairwise coprime integers, each coprime to $r$. Then $\ML(V)\ge1/N$ for every $(N,r,k)$-admissible set $V$; that is, Theorem~\ref{thm:S} holds with $T_k=3k(k+1)+1$ replaced by $8k+1$ (the hypothesis forces $N\ge8k+3$, below which the statement is vacuous). Consequently, for $1\le r$ with $2r\le N$:
+\begin{enumerate}[label=(\alph*),nosep]
+\item for every $k\ge1$ and every $N$ with $6\ell(8k+1+3\ell+60)+1200\le N$, $\ell=\lfloor\log_2N\rfloor+2$, every $(N,r,k)$-admissible $V$ has $\ML(V)\ge1/N$;
+\item for $1\le k\le40$ and $N\ge M'(k)$ of Table~\ref{tab:lin} the condition in (a) holds, so $\ML(V)\ge1/N$;
+\item for every $k\ge1$ and $N\ge\max\bigl(10^5,67(8k+1)^2\bigr)$, $\ML(V)\ge1/N$;
+\item under (a), (b) or (c), a set $V$ of positive integers with at most $k$ elements larger than $N$ and $\ML(V)<1/N$ contains $\{1,\dots,\lfloor N/2\rfloor\}$ (the rigidity of Corollary~\ref{cor:S}(a)).
+\end{enumerate}
+\end{theorem}
+The family of $8k+1$ moduli is part of the hypothesis: it is a set $F\subseteq I(N,r)$ chosen once, for the given $(N,r,k)$ and independently of $V$, and the proof runs with that $F$ (in Lean it is the hypothesis \texttt{CopWinT (8k+1) N r}); the same holds for the family of $T_k$ moduli in Theorem~\ref{thm:S}. The hypothesis forces $N\ge8k+3$, since $|I(N,r)|=N-1-r\ge8k+1$ and $r\ge1$; below that bound the theorem is vacuous. The thresholds $M'(k)$ are smaller than the thresholds $M(k)$ of Theorem~\ref{thm:thr}(c) for $3\le k\le30$ (for example $M'(12)=20880$ against $M(12)=60360$, $M'(30)=37104$ against $350520$), and larger for $k=1$ ($11460$ against $11280$), where Theorem~\ref{thm:S} remains the better statement (the count $8k+1$ is below $T_k$ exactly when $k\ge2$, since $8k<3k(k+1)$ iff $k\ge2$; $T_1=7<9$); Table~\ref{tab:lin} lists $k=1,\dots,40$. A first form of the proof with the constant $18k+1$ in place of $8k+1$ is also a Lean statement (Section~\ref{sec:lean}). The mechanism is a count of how much of a short window around each witness time an added speed can cover, in place of the count of spoiled moduli (Section~\ref{sec:proofL}).
+
+\begin{theorem}[Two added speeds]\label{thm:W}
+Let $N\ge222$, $1\le r\le N/2$ and let $w_1,w_2>N$ be integers (equal values are allowed in the Lean statement). Then $\ML\bigl(([N]\setminus\{r\})\cup\{w_1,w_2\}\bigr)\ge1/N$.
+\end{theorem}
+This is the case $k=2$ of Theorem~\ref{thm:thr}; Lean has a separate proof of it that does not pass through the general theorem. The threshold $222$ is what the Lean proof gives; Remark~\ref{rem:Wsharp} gives $N\ge114$ by hand, and the exact threshold is $21$ (Proposition~\xA{prop:N0}(ii) of~\cite{A1}; Remark~\ref{rem:Nzero}; exceptions exist at $N=20$).
+
+\begin{corollary}[Several deleted speeds, two added speeds]\label{cor:Wmono}
+Let $N\ge222$, let $R\subseteq[N]$ contain some $r\le N/2$, and let $w_1,w_2>N$ be integers. Then $\ML\bigl(([N]\setminus R)\cup\{w_1,w_2\}\bigr)\ge1/N$.
+\end{corollary}
+\begin{proof}
+$([N]\setminus R)\cup\{w_1,w_2\}\subseteq([N]\setminus\{r\})\cup\{w_1,w_2\}$, so $\ML$ is at least as large (monotonicity), and Theorem~\ref{thm:W} applies. This step is by hand; it is not a Lean statement.
+\end{proof}
+
+\begin{theorem}[Coprime pairs of large removed speeds]\label{thm:Q}
+Let $N\ge4$ and $N/2<r_1<r_2\le N$ with $\gcd(r_1,r_2)=1$; let $w_1,w_2>N$ be distinct integers and $V=([N]\setminus\{r_1,r_2\})\cup\{w_1,w_2\}$.
+\begin{enumerate}[label=(\roman*),nosep]
+\item If $w_1=m_1r_1$ and $w_2=m_2r_2$ with integers $m_1,m_2\ge2$ (no restriction on the multipliers), then $\ML(V)\ge1/N$ for $N\ge5$ and $\ML(V)\ge2/(2N+1)=2/9$ for $N=4$; in particular $V$ is not tight.
+\item If one of $w_1,w_2$ is a multiple $\kappa r_1r_2$ of $r_1r_2$ and the other, $p$, is divisible by neither $r_1$ nor $r_2$, then $\ML(V)>1/(N+1)$ (not tight).
+\item (Lemma Z, any $\gcd$.) For $r_1<r_2$ in $(N/2,N]$ and $g=\gcd(r_1,r_2)$, $\beta(N,r_1)<(r_2/g)\,(N+1-r_1)$. Hence the set $([N]\setminus\{r_1\})\cup\{mr_1\}$ is not tight for any $m\ge r_2/g$.
+\end{enumerate}
+\end{theorem}
+
+\begin{corollary}[Coprime closure]\label{cor:Q}
+For $N\ge4$, $N/2<r_1<r_2\le N$ coprime and inserted speeds $w_1\ne w_2$ above $N$, the set $V$ of Theorem~\ref{thm:Q} is never tight.
+\end{corollary}
+\emph{Precise statement.} For coprime $r_1<r_2$ in $(N/2,N]$ and any distinct $w_1,w_2>N$, no set $([N]\setminus\{r_1,r_2\})\cup\{w_1,w_2\}$ has $\ML=1/(N+1)$ (Corollary~\ref{cor:Q}, $N\ge4$): no tight set of this form exists. In the branch where each $w_i$ is a multiple of one $r_i$ the stronger bound $\ML\ge1/N$ holds (Theorem~\ref{thm:Q}(i), and $\ML\ge2/(2N+1)=2/9$ for $N=4$); in the branch where one $w_i$ is a multiple of $r_1r_2$ only $\ML>1/(N+1)$ is proved (Theorem~\ref{thm:Q}(ii)). This answers the coprime case of Zhang's Question~8.1 (\cite{Z}, v3), whether every tight modification replacing two speeds greater than $N/2$ by two larger speeds comes from his Theorem~5.1, in the sense that the class of tight modifications with coprime $r_1,r_2$ is empty, so no tight modification fails to come from Theorem~5.1; the statement is one of non-existence and carries no information about the tight sets of Theorem~5.1 themselves, which have $\gcd(r_1,r_2)>1$ (\cite[Thm.~5.1, Ex.~5.2]{Z}). For $N\le9$ the statement is a consequence of Lean theorems; an exact computation over all inserted pairs is a cross-check.
+
+\emph{Prior art for the coprime case.} We did not find in the sources we read a statement that rules out tight sets for coprime $r_1,r_2>N/2$. The nearest statements are Zhang's Lemma~5.3 (each removed speed divides an inserted speed in a tight set; Lemma~\ref{lem:five} here), his non-tightness theorems, which concern removed speeds in $[2,n/10]$ (Thms.~6.3, 6.4, 6.6, Cor.~6.9, Thm.~6.10), and Peng's reduction of Question~8.1 to a finite search for each $n$ (Thm.~6.3), which he records as open beyond $n>140$ (Section~14). This concerns the texts of Section~\ref{sec:prior} only.
+
+\paragraph{The results in words.} Theorem~\ref{thm:Q}(i): replacing two coprime speeds $r_1<r_2$ above $N/2$ by arbitrary multiples never gives a tight set. (ii): one added speed a multiple of $r_1r_2$ and the other divisible by neither $r_i$ is also never tight. (iii), Lemma Z: the single-entry condition $m_1s_1\le\beta(N,r_1)$ of Goddyn and Wong fails as soon as the multiplier $m_1$ is at least $r_2/\gcd(r_1,r_2)$, so such a multiplier can never be part of a tight set. For a common factor, tight sets exist (Zhang's example $N=73$, $R=\{70,72\}$ with added speeds $140,144$). Writing the added speeds as $m_ir_i$, a \emph{failing unit} of the entry $i$ is an integer $b$ coprime to $r_i$ with $N+1-r_i\le b<m_i(N+1-r_i)$; these are the integers that make the entry fail the single-entry condition. Theorem~\ref{thm:T} says that $\ML\le1/(N+1)$ holds exactly when every failing unit of each entry is \emph{rescued} by the other added speed, an explicit congruence with two inequalities (Section~\ref{sec:T}); with no failing unit this is the Goddyn--Wong case. Theorem~\ref{thm:E} says that for any two added speeds $\ML$ lies between $E$ and $\max(1/(N+1),E)$, where $E$ is the supremum, over one real offset from a rational with denominator $r_i$, of the lower envelope of the retained speeds and the two added speeds, with equality to $\max(1/(N+1),E)$ when $N+1$ divides neither added speed. Theorem~\ref{thm:M} says that for several deleted speeds that pairwise share a factor, a value $\tau>1/(N+1)$ of $\ML$ is a single-entry value $m_{r_0}/D_{r_0}$ for some entry $r_0$, with the other new speeds kept at distance at least $\tau$ from the witness time of $r_0$.
+
+\subsection{Idea of the proofs}
+Remove $r$ from $[N]$ and take a modulus $D\in[N+1+r,2N-1]$ coprime to $r$. At the time $t_0=a/D$ with $ar\equiv1\pmod D$ every remaining integer speed is at distance $\ge2/D>1/N$ from an integer: the only speeds that could land at $0$ or one step from $0$ modulo $D$ are $r$ (removed) and $D-r$ (too large). An added speed $w$ spoils $t_0$ only if $D$ divides $w$, $w-r$ or $w+r$. A speed below $N^{2j+1}$ can be divisible in this way by at most $2j$ moduli of a pairwise coprime family in the window, so a bounded number of moduli are spoiled in total, and a family of $T_k$ moduli leaves a clean one. A speed so large that it escapes this count is separated from all smaller ones by a factor $8kN$; around $t_0$ there is a window of length $\asymp1/(N^2L)$ on which the smaller speeds stay at distance $\ge1/N$, and a large speed is bad on only a $2/N$ fraction of it plus an edge term, so a good time exists by comparing measures. For Theorem~\ref{thm:L} the pigeonhole over spoiled moduli is replaced by a measure count: each added speed covers, summed over a pairwise coprime family, at most eight windows' worth of the short windows around the witness times (a lattice identity), and an oscillating speed covers at most $7/N$ of each. The coprime closure (Theorem~\ref{thm:Q}) uses the same bands for a covering argument on the two removed speeds; for a common factor (Section~\ref{sec:T}) the same arcs give an exact criterion, in which a failing blocker of one entry must be covered by a band of the other added speed.
+
+\subsection{Status of every statement}\label{sec:status}
+Table~\ref{tab:status} gives, for every numbered statement and table of this paper, one of: Lean (with the declarations), reviewed by hand, hand, computed, conjecture. It is set in a small type over as many pages as it needs.
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{@{}p{0.19\textwidth}p{0.27\textwidth}p{0.47\textwidth}@{}}
+\caption{Status per statement. ``Lean'': the declarations named build in the library, contain no \texttt{sorry}, and \texttt{\#print axioms} prints only the standard axioms (saved build outputs, read; no clean-checkout rebuild has been done). ``Reviewed'': re-derived by hand by a second pass that did not write the proof; this is not a referee's reading.}\label{tab:status}\\
+\toprule
+statement & status & Lean declarations (axioms: \texttt{propext, Classical.choice, Quot.sound} or a subset) \\
+\midrule
+\endfirsthead
+\toprule
+statement & status & Lean declarations \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Thm~\ref{thm:S} & Lean; proof also reviewed by hand (prime form) & \texttt{ML\_ge\_robust\_cop, robust\_core\_cop}; prime form \texttt{ML\_ge\_robust, robust\_core, far\_window, exists\_good\_point, measure\_bad\_le} \\
+Thm~\ref{thm:thr}(a),(b) & Lean (the Lean hypothesis counts indices $i$ with $v_i>N$, repeats with multiplicity) & \texttt{theoremS\_unconditional, ML\_ge\_S\_unconditional, ML\_ge\_robust\_unconditional, copWin\_unconditional, copWin\_table, copWin\_large, copWinT\_of\_cheb\_N}; for every $T$ (Lemma~\ref{lem:win}(b)): \texttt{Cheb30.cheb\_hyp, Cheb30.copWinC\_of\_cheb\_N} \\
+Thm~\ref{thm:thr}(c), Table~\ref{tab:cheb}, $k\le30$ & Lean (Chebyshev 30-combination, hypothesis-free; saved audit includes the closure test for \texttt{DusartPi}) & \texttt{copWin\_cheb\_table, theoremS\_cheb\_table, cor\_a\_cheb\_table, mcheb\_le\_ncheb, copWin\_cheb, theoremS\_cheb, cor\_a\_cheb, chebCond\_pow, copWin\_pow}; core \texttt{Cheb30.copWinC\_of\_cheb, Cheb30.copWinC\_of\_cheb\_N, Cheb30.window\_card\_lower, Cheb30.b30\_bounds, Cheb30.psiN\_upper} \\
+Table~\ref{tab:thr}, thresholds $N^*(k)$, $k\le12$ & Lean (\texttt{Nstar}, \texttt{NCheb}) & \texttt{copWin\_table, copWin\_large} \\
+Thm~\ref{thm:L}, hypothesis form ($8k+1$ moduli) & Lean (audit module \texttt{Axioms26}, saved output \texttt{linl\_ax.out}); informal proof reviewed by a fresh seat, joint count $8k+1$ re-derived by two seats & \texttt{ML\_ge\_robust\_lin8}; bricks \texttt{LinL.small\_total8, LinL.smallTot\_8, LinL.lam\_lattice\_sum, LinL.lam\_le\_vol, LinL.cell\_sum\_le, LinL.exists\_alive, LinL.exists\_good\_point\_gen, LinL.badMeas\_osc, LinL.bad\_subset\_arc, LinL.arc\_data, LinL.cop\_card\_le\_two, LinL.zero\_forces, robust\_core\_linC, ML\_ge\_robust\_linC} \\
+Thm~\ref{thm:L}(a)--(d) & Lean & \texttt{theoremS\_linear, theoremS\_linear\_big, theoremS\_linear\_table, chebCond\_lin8\_table, cor\_a\_linear} \\
+Table~\ref{tab:lin}, columns $M'(k)$, $k\le40$; $M'(k)<M(k)$ for $3\le k\le30$ & Lean (\texttt{MChebLin}, kernel-certified; \texttt{mchebLin\_lt\_mcheb}, \texttt{mchebLin\_le\_mcheb}) & \texttt{MChebLin, chebCond\_lin8\_table, mchebLin\_lt\_mcheb, mchebLin\_le\_mcheb} \\
+Table~\ref{tab:lin}, columns $M(k)$ for $k\ge31$ and all prime-count thresholds $N'^*(k)$, $N^*(k)$ for $k\ge13$ & computed (exact; same program as the Lean tables); not Lean & none \\
+Thm~\ref{thm:L} with $18k+1$ moduli (first form) & Lean & \texttt{ML\_ge\_robust\_lin, theoremS\_lin18, cor\_a\_lin18, theoremS\_lin18\_big, LinL.smallTot\_18, LinL.small\_total} \\
+Remarks~\ref{rem:cov} and~\ref{rem:floor} (coverage maxima, method floor) & computed; not Lean & none \\
+Remark~\ref{rem:lin}, value form $\ML(V)\ge2/(D^*+1)$ & proved at author level; not Lean; not claimed & none \\
+Table~\ref{tab:thr}, minimality of $N^*(k)$ for $k\le6$ & computed (sieve to $2\cdot10^7$) & none \\
+Cor.~\ref{cor:S}(a) & Lean (all entries $\ge1$) & \texttt{cor\_a\_robust\_unconditional, cor\_a\_cop} \\
+Cor.~\ref{cor:S}(b) & Lean & \texttt{cor\_b} \\
+Thm~\ref{thm:W}, first sentence & Lean (separate proof through the vector \texttt{wFam2}, not a corollary of \texttt{theoremS\_unconditional}) & \texttt{theoremW\_unconditional, ML\_ge\_wFam2\_cop} \\
+Cor.~\ref{cor:Wmono} & hand (monotonicity); not Lean & none \\
+Remark~\ref{rem:Wsharp} (ten primes, $N\ge114$) & hand, reviewed; not Lean & none \\
+Thm~\ref{thm:Q}(i), $N\ge10$ or $m_1<r_2$ or $m_2<r_1$ & Lean & \texttt{theoremC, theoremC\_cor, caseI\_ML, caseI'\_ML, caseII\_ML, star\_ineq} \\
+Thm~\ref{thm:Q}(i), all multipliers, $N\ge5$ ($\ML\ge1/N$) and $N\ge4$ ($\ML\ge2/(2N+1)$) & Lean (saved output rebuilt after the last edit of the module \texttt{Q81S3}; Section~\ref{sec:lean}) & \texttt{theoremC\_ge5, theoremC\_unif, theoremC\_unif\_cor, theoremC\_five\_nine, theoremC\_four, theoremC\_four\_II, thC\_5\_3\_4, thC\_9\_8\_9, cover\_all, cov\_sound, S1\_sound, S2\_sound, R1\_sound, chk1\_sound, chk2\_sound} \\
+Thm~\ref{thm:Q}(ii) & Lean & \texttt{theoremBC} (with \texttt{band\_int, z\_one, z\_one2, arith\_k1, arith\_k2, same\_band, uniform\_band, free\_class\_band}) \\
+Thm~\ref{thm:Q}(iii) & Lean & \texttt{lemmaZ, lemmaZ\_not\_tight, exists\_unit\_window} \\
+Lemma~\ref{lem:five} (Zhang's Lemma~5.3, two entries) & hand, three lines; not Lean & none \\
+Cor.~\ref{cor:Q}, $N\ge4$ & combination of Lean theorems (Thm~\ref{thm:Q}(i),(ii)) and Lemma~\ref{lem:five}; the combination is by hand & none \\
+Cor.~\ref{cor:Q}, $N\le9$, cross-check & computed, complete over all inserted pairs for coprime $R$ (corroboration only) & none \\
+Thm~\ref{thm:T}, both directions & Lean (``only if'' for $m_i+1\le N$; ``if'' for all $m_i$); ``tight'' is $\ML\le1/(N+1)$ in Lean, which is tightness only if $\ML\ge1/(N+1)$ holds for $V$ & \texttt{theoremT, theoremT\_if, theoremT\_only\_if, class\_cover, class\_cover\_vec, class\_cover\_any, nonunit\_cover, exists\_b, rescue\_core, rescue\_necessary\_1, rescue\_necessary\_2, ret\_far, window\_band} \\
+Thm~\ref{thm:E} (sandwich, equality, criterion) & Lean & \texttt{two\_entry\_sandwich, two\_entry\_eq, two\_entry\_eq\_of\_floor, two\_entry\_eq\_of\_E\_ge, two\_entry\_lt\_iff, two\_entry\_upper, two\_core, arcVal\_le\_ML, ML\_ge\_floor2, arcSet\_nonempty, arcSet\_bdd, far\_shift, far\_shift2, nid\_class\_A, nid\_class\_B} \\
+Thm~\ref{thm:M} (necessity, and the equivalence) & Lean & \texttt{multi\_ML\_nec, multi\_ML\_eq\_iff, mnec\_core, mnec\_at, int\_far\_of\_nid} \\
+Conj.\ T-X (Section~\ref{sec:open}) & conjecture; computed for all inserted pairs for $N\le254$; not claimed & none \\
+Sharpness examples (Remark~\ref{rem:sharp}), exceptions for $N\le113$, $N=8$ family, list to $10^7$ & computed & none \\
+\texttt{inst\_73\_70\_72} (tight $N=73$, $R=\{70,72\}$) & Lean & \texttt{inst\_73\_70\_72, multi\_value\_tight\_auto} \\
+\end{longtable}
+}
+
+\subsection{Related work}
+The statements nearest to ours, with their sources (the texts consulted are listed in Section~\ref{sec:prior}).
+\begin{itemize}[nosep]
+\item \emph{Goddyn--Wong}~\cite{GW}. $[n-1]$ with several speeds multiplied simultaneously stays tight under a criterion on the multipliers (Thm.~3.1, Cor.~3.3); for fixed $r$ only finitely many replacements $r\to w$ with $r\nmid w$ are tight (Thm.~2.4).
+\item \emph{Zhang}~\cite{Z} (v3). Reproves the acceleration criterion for several entries (Thm.~5.1); gives the example $N=73$, $R=\{70,72\}$ (Ex.~5.2); proves that a tight modification contains a multiple of every removed speed (Lemma~5.3, Cor.~5.4); proves non-tightness for removed speeds in $[2,n/10]$ with $n\ge\max(40,10q)$ (Thms.~6.3, 6.4, 6.6, Cor.~6.9, Thm.~6.10); asks whether every tight two-entry modification with $r_1,r_2>N/2$ comes from Theorem~5.1 (Question~8.1). His rational witnesses are Thm.~2.9.
+\item \emph{Peng}~\cite{P}. As we read it: every $k$-replacement deleting $1$ escapes tightness when $4k\le n$, whatever the other deletions and however large the inserted speeds (Thm.~5.1: a time in $(\frac1{2n},\frac1n)$ with all distances $>1/n$); the same for two replacements when $n\ge6$ (Thm.~5.2); a reduction of Question~8.1 to a finite search for each $n$ (Thm.~6.3, with the bound $6(n-1)^3$ for two replacements), recorded as open beyond $n>140$ (Section~14); a finite reduction for any $k$ (Thms.~7.1, 7.2, 8.3); lemmas that place $k$ inserted speeds into a safe window by counting (Lemmas~4.4, 4.5).
+\item \emph{Comparison with Peng for $r=1$.} Theorem~\ref{thm:S} is in the same family of witness-time and window-counting arguments, with a different level ($1/N$ rather than strictness above $1/(N+1)$) and arbitrary $k$ under a richness hypothesis. For the special case $r=1$, Peng's Thm.~5.1 is the earlier and wider result: it needs only $4k\le n$ (that is, $4k\le N+1$), places no bound on the inserted speeds, and shows $\ML(V)>1/n=1/(N+1)$. Theorem~\ref{thm:thr} with $r=1$ proves the stronger conclusion $\ML(V)\ge1/N$, but only for $N\ge N^*(k)$ (for $k=2$, $N\ge222$; for the Chebyshev ranges, Table~\ref{tab:cheb}); it neither replaces nor contains Peng's theorem, and Peng has priority for non-tightness after deleting $1$. What Theorem~\ref{thm:S} adds is the level $1/N$ and every removed speed $r\le N/2$; we have not compared the two proofs beyond their statements.
+\item \emph{Repository}~\cite{R1337} (unrefereed). The folder \texttt{lonely-runner-two-insertions} (undated, Lean ``full'' as claimed, not inspected by us) states that a Goddyn--Wong acceleration of $[p-1]$ plus any two positive speeds has a time in $[\frac1{p+2},\frac1p]$ at which all distances are $\ge\frac1{p+2}$; this is a different statement (level $1/(p+2)$ with $p+1$ speeds), and the only one we read there that concerns insertions. We found there nothing on deletions combined with insertions at level $1/N$ or on two deleted speeds. The folders \texttt{tight-six-speeds}, \texttt{tight-seven-speeds}, \texttt{tight-eight-speeds}, \texttt{tight-nine-speeds} and \texttt{tight-eleven-to-fourteen} (read at the level of the README and proof notes) classify the primitive sets with $\ML=1/(N+1)$ for $N=6,7,8,9$ and $N=10,\dots,13$: the consecutive set only, except for $N=7$ (three sets: the consecutive one and two of the Goddyn--Wong census) and $N=13$ (one further set $\{1,\dots,11,13,24\}$, a one-entry replacement $12\to24$, not a double deletion and so outside Theorem~\ref{thm:Q}); they cite the one-entry results of Goddyn--Wong and Zhang and state no robustness statement for several added speeds. The folder \texttt{loneliness-on-a-hyperplane} is a probabilistic statement about random speeds with a linear relation and is unrelated.
+\item \emph{Others.} Giri and Kravitz, Jain and Kravitz (journal version) and Liu's survey, read for the statements relevant to deletions, contain no statement of this kind. Yi, Gill and Bu~\cite{YGB} (Thm.~11.1) have an effective isolation theorem for all $n$ in a different regime (very large speeds).
+\item \emph{Scope of the search.} We did not find Theorem~\ref{thm:S}, Corollary~\ref{cor:S} or Theorem~\ref{thm:Q} in the texts of Section~\ref{sec:prior}; that search is limited and we make no priority claim beyond it. Theorems~\ref{thm:T}, \ref{thm:E}, \ref{thm:M} and~\ref{thm:L} were added after the audit of 25 November 2026 and have not been searched for in the literature: we make no novelty claim for them (the thresholds $14$ and $21$ belong to~\cite{A1}, which makes no novelty claim for them either). Zhang's Theorem~5.1 and Question~8.1 and Peng's reduction of the question to a finite search (Thm.~6.3) are the nearest statements.
+\end{itemize}
+
+\subsection{Outline}
+Section~\ref{sec:proofS} proves Theorem~\ref{thm:S}. Section~\ref{sec:thr} gives the window counts, Theorem~\ref{thm:thr} and Corollary~\ref{cor:S}, and the sharpness remarks. Section~\ref{sec:Q} treats two coprime removed speeds, and Section~\ref{sec:T} two or more removed speeds with a common factor. Section~\ref{sec:open} lists the open cases. Section~\ref{sec:lean} describes the Lean development and Section~\ref{sec:prior} the sources consulted.
+
+
+%==========================================================================
+\section{Proof of Theorem~\ref{thm:S}}\label{sec:proofS}
+
+\paragraph{Outline.}
+Four macro-steps. (1) Reduce to $V'=([N]\setminus\{r\})\cup W$ with $W=\{w_1<\dots<w_m\}$, $m\le k$, all $w_j>N$ (Lemma~\ref{lem:R}). (2) Split $W$ into small and large speeds at the first ratio exceeding $8kN$ (Lemma~\ref{lem:C}). (3) Choose a modulus $D$ of the window not spoiled by any small speed (Lemmas~\ref{lem:wit} and~\ref{lem:S}) and pass to the window around $a/D$ on which the retained and small speeds stay $\ge1/N$ (Lemma~\ref{lem:lip}). (4) Find a good time in that window for all large speeds simultaneously by measure (Lemma~\ref{lem:M}). Each lemma is stated with all its hypotheses; the proof imports nothing. This section needs none of the others and is used by every later one.
+
+Throughout $k\ge1$, $N\ge3$, $1\le r\le N-2$, $(N,r)$ is $k$-rich, and $\mathcal C\subset I(N,r)$ is a set of $T_k$ pairwise coprime integers, each coprime to $r$. Then $T_k\le|I(N,r)|=N-1-r$, so $N\ge T_k+2>8k$ (since $3k^2+3k+3>8k$).
+
+\begin{lemma}[Reduction]\label{lem:R}
+If $V$ is $(N,r,k)$-admissible then $V\subseteq V'=([N]\setminus\{r\})\cup W$ with $W=V\setminus[N]=\{w_1<\dots<w_m\}$, $m\le k$, and $\ML(V)\ge\ML(V')$.
+\end{lemma}
+
+\begin{lemma}[Witness time]\label{lem:wit}
+Let $D\in I(N,r)$ with $\gcd(D,r)=1$, $a$ an integer with $ar\equiv1\pmod D$ and $t_0=a/D$. For every integer $x\ge1$ with $x\not\equiv0,r,-r\pmod D$ we have $\nd{xt_0}\ge2/D$. Every $x\in[N]\setminus\{r\}$ is such an integer.
+\end{lemma}
+\begin{proof}
+With $y=xa\bmod D$, $\nd{xt_0}=\min(y,D-y)/D\ge2/D$ iff $y\notin\{0,1,D-1\}$, and $y=0,1,D-1$ iff $x\equiv0,r,-r$ (as $a$ is a unit). For $x\in[N]\setminus\{r\}$: $D\mid x$ is impossible since $0<x\le N<D$; $D\mid x-r$ forces $x=r$ since $|x-r|\le N-1<D$; $D\mid x+r$ forces $x+r=D$ (as $3\le x+r\le2N<2D$), so $x=D-r\ge N+1$.
+\end{proof}
+
+\begin{lemma}[Scale split]\label{lem:C}
+Put $w_0=N$ and let $i$ be the least index in $\{0,\dots,m\}$ with $i=m$ or $w_{i+1}>8kNw_i$. Let $L=w_i$. Then (C1) $w_j\le(8kN)^jN\le N^{2j+1}$ for $1\le j\le i$; (C2) every $u\in\{w_{i+1},\dots,w_m\}$ satisfies $u>8kNL$, and there are $p=m-i\le k$ of them; (C3) every $x\in S=([N]\setminus\{r\})\cup\{w_1,\dots,w_i\}$ satisfies $x\le L$.
+\end{lemma}
+\begin{proof}
+For $s<i$ minimality gives $w_{s+1}\le8kNw_s$; iterate from $w_0=N$ and use $8k\le N$. (C2) is the definition and monotonicity; (C3) is clear.
+\end{proof}
+
+\begin{lemma}[Spoil count]\label{lem:S}
+Let $1\le j\le i$ and $e\in\{-1,0,1\}$. At most $2j$ elements of $\mathcal C$ divide $w_j-er$. Hence at most $3i(i+1)\le3k(k+1)<T_k$ elements of $\mathcal C$ divide some $w_j-er$ ($1\le j\le i$, $e\in\{-1,0,1\}$), and some $D\in\mathcal C$ divides none of them (call it \emph{clean}).
+\end{lemma}
+\begin{proof}
+$M=|w_j-er|$ is a positive integer ($w_j>N\ge r$) with $M\le w_j+r\le N^{2j+1}+N-2<(N+2)^{2j+1}$. The elements of $\mathcal C$ dividing $M$ are $c$ pairwise coprime integers $\ge N+2$, so their product divides $M$ and $(N+2)^c\le M<(N+2)^{2j+1}$, giving $c\le2j$. Summing over $e$ and $j$ gives $3\sum_{j\le i}2j=3i(i+1)$.
+\end{proof}
+
+\begin{lemma}[Window]\label{lem:lip}
+Let $D\in\mathcal C$ be clean, $a$, $t_0=a/D$ as in Lemma~\ref{lem:wit}, $L$ as in Lemma~\ref{lem:C} and $\delta=(2N-D)/(DNL)>0$. For every $t$ with $|t-t_0|\le\delta$ and every $x\in S$, $\nd{xt}\ge1/N$.
+\end{lemma}
+\begin{proof}
+Every $x\in S$ avoids the classes $0,\pm r$ modulo $D$ (retained speeds by Lemma~\ref{lem:wit}, the $w_j$ by cleanness), so $\nd{xt_0}\ge2/D$, and $\nd{xt}\ge2/D-x\delta\ge2/D-L\delta=2/D-(2N-D)/(DN)=1/N$, using $x\le L$.
+\end{proof}
+
+\begin{lemma}[Measure]\label{lem:M}
+Let $N\ge2$, $u\ge1$ an integer and $J$ a closed interval of length $l>0$. Then $|\{t\in J:\nd{ut}<1/N\}|\le2l/N+4/(Nu)$.
+\end{lemma}
+\begin{proof}
+The set is the union of the open intervals $(c/u-1/(Nu),c/u+1/(Nu))$, $c\in\ZZ$, pairwise disjoint since $2/(Nu)\le1/u$. At most $\lfloor lu\rfloor+1$ centres lie in $J$, contributing at most $2/(Nu)$ each, so at most $2l/N+2/(Nu)$; a centre outside $J$ whose interval meets $J$ lies within $1/(Nu)<1/u$ of an endpoint, so there are at most two, each meeting $J$ in length at most $1/(Nu)$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:S}]
+By Lemma~\ref{lem:R} it suffices to find $t$ with $\nd{vt}\ge1/N$ for all $v\in V'$. Take $i$, $L$ and a clean $D\in\mathcal C$ (Lemma~\ref{lem:S}; if $i=0$ every $D$ is clean). If $i=m$ then $t=t_0$ works by Lemma~\ref{lem:lip}. Otherwise let $J=[t_0-\delta,t_0+\delta]$ and $l=2\delta=2(2N-D)/(DNL)\ge2/((2N-1)NL)>1/(N^2L)$ (using $D\le2N-1$). The $p\le k$ large speeds satisfy $u>8kNL$, so by Lemma~\ref{lem:M} the set of $t\in J$ bad for some large speed has measure at most $\sum_u(2l/N+4/(Nu))\le2kl/N+4k/(N\cdot8kNL)\le l/4+1/(2N^2L)<l/4+l/2<l$, using $k\le N/8$. So some $t\in J$ is good for every large speed, and by Lemma~\ref{lem:lip} for every $x\in S$. Hence $\ML(V')\ge1/N$.
+\end{proof}
+
+\begin{remark}[Hypotheses]
+$k$-richness gives a clean modulus and $N\ge8k$. $r\le N-2$ makes the window nonempty and gives $x+r<2D$ in Lemma~\ref{lem:wit}. Pairwise coprimality is used only in Lemma~\ref{lem:S} (the product of the spoiled moduli divides $w_j-er$); coprimality to $r$ is used for the existence of $a$. For $r\in\{N-1,N\}$ the window is empty and the theorem is vacuous.
+\end{remark}
+
+
+%==========================================================================
+\section{Window counts, thresholds, rigidity}\label{sec:thr}
+
+\paragraph{Outline.}
+This section needs Theorem~\ref{thm:S} and is used by Section~\ref{sec:Q} only through the sharpness remarks. Theorem~\ref{thm:thr} says that for $N\ge N^*(k)$ every $r\le N/2$ is $k$-rich. The input is a lower bound for the number of pairwise coprime integers in $[N+1+r,2N-1]$ coprime to $r$. For $N$ in the explicit ranges, prime counts in blocks are checked by the Lean kernel; beyond those, a counting lemma based on Chebyshev's combination of floor functions is used.
+
+\begin{lemma}[Window counts]\label{lem:win}
+(a) For $1\le k\le12$, $N\ge N^*(k)$ and $1\le r$, $2r\le N$: $(N,r)$ is $k$-rich. (b) For every integer $T\ge1$, $N\ge\max(10^5,67T^2)$ and $1\le r$, $2r\le N$: the interval $[N+1+r,2N-1]$ contains $T$ pairwise coprime integers coprime to $r$. In particular $(N,r)$ is $k$-rich for $N\ge\max(10^5,67T_k^2)$ ($T=T_k$, the form used in Theorem~\ref{thm:thr}(b)), and for $T=8k+1$ the interval contains the family $F$ of Theorem~\ref{thm:L}(c). (c) For $1\le k\le30$, $N\ge M(k)$ (Table~\ref{tab:cheb}) and $1\le r$, $2r\le N$: $(N,r)$ is $k$-rich. More generally, for any $T$, $N$ and $r$ with $1\le r$, $2r\le N$ and $6\ell(T+3\ell+60)+1200\le N$, $\ell=\lfloor\log_2N\rfloor+2$, the interval $[N+1+r,2N-1]$ contains $T$ pairwise coprime integers coprime to $r$.
+\end{lemma}
+{\sloppy Status: Lean (\texttt{copWin\_table} for (a), \texttt{copWin\_large} for (b) with $T=T_k$, \texttt{Cheb30.copWinC\_of\_cheb\_N} and \texttt{copWinT\_of\_cheb\_N} for (b) with every $T$, \texttt{copWin\_cheb\_table} for (c), \texttt{copWinC\_of\_cheb} for the general statement, which uses nothing beyond Mathlib). In (b) for arbitrary $T$ the only inequality to check is
+\begin{equation}\label{eq:cheb}
+6\ell(T+3\ell+60)+1200\le N,\qquad\ell=\lfloor\log_2N\rfloor+2,
+\end{equation}
+the general statement; it is the Lean statement \texttt{Cheb30.cheb\_hyp}. By hand, for $T\ge1$ and $N\ge\max(10^5,67T^2)$: write $j=\lfloor\log_2N\rfloor$ (the letter $k$ is the number of added speeds, so it is not used here), so $\ell=j+2$. Since $N\ge10^5>2^{16}$ we have $j\ge16$ and $2^j\le N$. Then $100\ell^2\le2^j$: for $j=16$, $\ell=18$ and $100\cdot324=32400\le65536$, and the inequality passes from $j$ to $j+1$ because $(1+1/\ell)^2\le2$ for $\ell\ge3$. Hence $\ell^2\le N/100$ and $\ell\le\sqrt N/10$. Expand $6\ell(T+3\ell+60)=6\ell T+18\ell^2+360\ell$ and use $6\ell T\le2.4\,\ell^2+3.75\,T^2$, which is $0.15\,(4\ell-5T)^2\ge0$. The left side of~\eqref{eq:cheb} is then at most $20.4\,\ell^2+3.75\,T^2+360\,\ell+1200$, and term by term
+\[
+20.4\,\ell^2\le0.204N,\quad 3.75\,T^2\le\tfrac{3.75}{67}N<0.056N,\quad 360\,\ell\le36\sqrt N\le0.114N,\quad 1200\le0.012N .
+\]
+The third bound needs $\sqrt N\ge36/0.114$, that is $N\ge99{,}723$ (at $N=10^5$: $36\sqrt N=11384$ against $11400$), so the floor $10^5$ in (b) is tied to this term; the fourth holds with equality at $N=10^5$. The sum is $0.204+0.056+0.114+0.012=0.386$, so the left side of~\eqref{eq:cheb} is at most $0.386\,N<N$. Every term is bounded directly by a fraction of $N$, using only $N\ge10^5$, $N\ge67T^2$ and $2^j\le N$; monotonicity of the left side of~\eqref{eq:cheb} in $N$ is not used, so the jumps of $\ell$ at powers of $2$ are harmless. \emph{On the constant $67$.} It is the constant of the Lean statement and is kept. The same hand argument gives (b) for $N\ge\max(10^5,T^2)$: $T\le\sqrt N$ gives $6\ell T\le0.6\,T\sqrt N\le0.6N$, and with $18\ell^2\le0.18N$ the sum is $0.6+0.18+0.114+0.012=0.906<1$, so the left side of~\eqref{eq:cheb} is at most $0.906\,N$. This variant is by hand, not Lean (a change of the Lean statement would be needed); as a check, \eqref{eq:cheb} was verified by exact integer arithmetic for $1\le T\le30000$ at $N=\max(10^5,T^2)$ and at its doublings up to $2^7$ times, with no failure. Inequality~\eqref{eq:cheb} is itself near-linear in $T$ (it asks for about $N\ge6T\log_2N$), so the last column of Table~\ref{tab:thr} overstates what is needed. Table~\ref{tab:status} lists the declarations.\par} Method. A window $[N+1+r,2N-1]$ with $r\le N/2$ contains $(\frac32N,2N)$. Prime powers in $(\frac32N,2N]$ with distinct primes are pairwise coprime (two prime powers of the same prime in a window of ratio $<2$ cannot both occur), and at most $\lfloor\log_2r\rfloor$ of them share a factor with $r$. Their number is bounded below by $\psi(2N)-\psi(\frac32N)$ divided by $\log2N$, and Chebyshev's 1852 combination $\lfloor x\rfloor-\lfloor x/2\rfloor-\lfloor x/3\rfloor-\lfloor x/5\rfloor+\lfloor x/30\rfloor$ gives $Ax-O(\log x)\le\psi(x)\le\frac65Ax+O(\log^2x)$ with $A=0.9212\ldots$, ratio $\frac65<\frac43$, which suffices for the window of ratio $\frac43$. The counting condition in (c) and in the general statement is exactly what the Chebyshev bound yields: at least $T+\log_2N+1$ prime powers lie in $(N+\lfloor N/2\rfloor,2N]$. This interval includes $2N$, which is outside the window $[N+1+r,2N-1]$ (it is a prime power only if $N$ is a power of $2$); the ``$+1$'' absorbs it. At most $\lfloor\log_2r\rfloor\le\log_2N$ of the others share a prime with $r$, and the remaining $T$ lie in the window, are pairwise coprime and are coprime to $r$; the threshold $M(k)$ is the exact point from which this condition holds for all larger $N$. For (a) the finite ranges below the Chebyshev threshold are covered by kernel-checked counts in blocks. In Lean the Chebyshev bound is formalised from Stirling's formula, with no import beyond Mathlib. The previous standard imported bound (Dusart) is not used.
+
+\begin{proof}[Proof of Theorem~\ref{thm:thr}]
+Lemma~\ref{lem:win} and Theorem~\ref{thm:S}, with $r\le N/2\le N-2$ for $N\ge4$.
+\end{proof}
+
+\begin{proof}[Proof of Corollary~\ref{cor:S}]
+(a) Let $r\le N/2$ with $r\notin V$. Since $N\ge4$, $r\le N-2$, $V$ is $(N,r,k)$-admissible and $(N,r)$ is $k$-rich by Lemma~\ref{lem:win}; Theorem~\ref{thm:S} gives $\ML(V)\ge1/N$, a contradiction. (b) Let $N/2<r\le N$, $r\notin V$, and suppose $r$ divides no element of $V$ larger than $N$. At $t=1/r$: a multiple of $r$ in $[N]$ other than $r$ would be $\ge2r>N$, so no element of $V\cap[N]$ is a multiple of $r$, and no larger element is either; hence $\nd{v/r}\ge1/r\ge1/N$ for all $v\in V$ and $\ML(V)\ge1/N$.
+\end{proof}
+
+\begin{remark}[Sharpness of the hypothesis]\label{rem:sharp}
+The hypothesis cannot be dropped (computed, exact): for $k=1$, $N=13$, $r=6$, $V=([13]\setminus\{6\})\cup\{69\}$ has $\ML=3/40<1/13$; for $k=2$, $N=20$, $r=6$, $V=([20]\setminus\{6\})\cup\{29,31\}$ has $\ML=2/41<1/20$; for $k=3$, $N=29$, $r=12$, $V=([29]\setminus\{12\})\cup\{31,94,98\}$ has $\ML<1/29$. The exact thresholds for $k=1$ and $k=2$ are stated and proved in~\cite[Theorem~\xA{thm:OE}, Proposition~\xA{prop:N0}]{A1} (Remark~\ref{rem:Nzero} below); for $k\ge3$ the exact threshold is not known.
+\end{remark}
+
+\begin{remark}[A sharper two-speed form]\label{rem:Wsharp}
+For $k=2$ a different argument gives the statement of Theorem~\ref{thm:W} for $N\ge114$ with only ten primes in the window (two measure lemmas replace the counting of spoiled moduli: for two large speeds some time in the window is good for both, for one large speed a closed interval of length $2/(Nw)$ contains a good time, and a case split on the sizes of $w_1,w_2$). This is a hand proof, reviewed, and is not in Lean. For \emph{two deleted speeds} ($r_1\le N/2$, any $r_2$) and two added speeds, an exact computation over all inserted pairs covers $4\le N\le113$ and finds exceptions exactly for $N\in\{4,\dots,8,12,13\}$, e.g.\ $N=13$ with $R=\{6,10\}$, $W=\{20,69\}$, $\ML=3/40$; so there is none in $14\le N\le113$. The exception $N=20$ of Remark~\ref{rem:sharp} is of a different family (\emph{one} deleted speed, $r=6$) and is not an exception of this scan, although $20$ lies in $14\le N\le113$; for one deleted speed the last exception is $N=20$ (Remark~\ref{rem:Nzero}).
+\end{remark}
+
+\begin{remark}[The exact thresholds $14$ and $21$ are stated and proved in~\cite{A1}]\label{rem:Nzero}
+For $k\ge1$ let $N_0(k)$ be one more than the largest $N$ for which some $r\le N/2$ and some set $W'$ of at most $k$ integers larger than $N$ give $\ML(([N]\setminus\{r\})\cup W')<1/N$. The values $N_0(1)=14$ and $N_0(2)=21$ are Theorem~\xA{thm:OE} and Proposition~\xA{prop:N0}(i),(ii) of the companion paper~\cite{A1}, where the statements and their proofs (including the finite computation for $21\le N\le221$ and the reduction behind it) are given; they are not restated as a theorem here, so that each statement has one place; their status is that of~\cite[Table~\xA{tab:status}]{A1}; the rows that concern this paper are in Table~\ref{tab:Nzero} (for $k=2$: computed for $21\le N\le221$ by a reduction checked only by its author, Lean for $N\ge222$, the equality $N_0(2)=21$ by hand). What this paper contributes to them is the Lean statement for $k=2$ and $N\ge222$ (Theorem~\ref{thm:W}) and the exceptions of Remark~\ref{rem:sharp} at $N=13$ and $N=20$, which show that the hypothesis of Theorem~\ref{thm:S} cannot be dropped. In particular the threshold $222$ of Theorem~\ref{thm:W} is not sharp and $21$ is.
+\end{remark}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{r r r p{0.52\textwidth}}
+\toprule
+$k$ & $N^*(k)$ (Lean, Table~\ref{tab:thr}) & $N_0(k)$ & status of $N_0(k)$ \\
+\midrule
+1 & 79 & 14 & exact (Lean for $N\ge14$; exception at $13$ computed) \\
+2 & 222 & 21 & exact (computed for $21\le N\le221$, Lean for $N\ge222$; exception at $20$ computed) \\
+3 & 517 & $\ge30$ & lower bound only: $[29]\setminus\{12\}$ with three added speeds, computed \\
+4 & 895 & $\ge39$ & lower bound only: the unit-window family of~\cite{A1} for $r=12$, Lean for that $r$ \\
+\bottomrule
+\end{tabular}
+\caption{Lean thresholds against the exact thresholds $N_0(k)$ (Remark~\ref{rem:Nzero}; the values $N_0(1)$, $N_0(2)$ are from~\cite{A1}). For general $k$ the companion paper~\cite{A1} proves $N_0(k)\ge(3e^{\gamma}-o(1))\,k\log\log k$ by the unit-window family, so no threshold of the form of Theorem~\ref{thm:thr} can be a constant multiple of $k$.}
+\label{tab:Nzero}
+\end{table}
+
+\subsection{Proof of Theorem~\ref{thm:L}}\label{sec:proofL}
+\paragraph{Outline.}
+The proof has four macro-steps. (1) A family $F\subseteq I(N,r)$ of $8k+1$ pairwise coprime moduli coprime to $r$ gives, for each $D\in F$, a short window $J(D)$ around the witness time $a/D$ on which every retained speed stays at distance $\ge1/N$ (Lemmas~\ref{lem:wit} and~\ref{lem:L1}). (2) An added speed $w$ meets $J(D)$ in at most one arc if $w<\Omega:=(2N-1)N(N-2)/2$ (\emph{small}), and covers at most $7/N$ of $J(D)$ if $w\ge\Omega$ (\emph{oscillating}). (3) For a small $w$ the coverages, summed over $F$, total at most $8$ (a lattice identity). (4) A joint count over the $k$ added speeds shows that some $D\in F$ is covered by less than its whole window, so some time of $J(D)$ is good for every speed. The proof uses only Lemmas~\ref{lem:R}, \ref{lem:wit} and~\ref{lem:M} of Section~\ref{sec:proofS} (the window of Lemma~\ref{lem:lip} is not needed: Lemma~\ref{lem:L1} gives the same bound on the window $J(D)$ directly); it is also the informal version of the Lean modules of Section~\ref{sec:lean}. The words \emph{small} and \emph{oscillating} refer only to the size of an added speed relative to $\Omega$, and are unrelated to the scale split of Lemma~\ref{lem:C}.
+
+\paragraph{Setting.}
+Fix $k$, $N$, $r$, $F$ as in Theorem~\ref{thm:L}; then $8k+1\le|I(N,r)|=N-1-r$ gives $N\ge8k+3\ge11$. By Lemma~\ref{lem:R} take $V=([N]\setminus\{r\})\cup\{w_1,\dots,w_m\}$, $m\le k$, all $w_j>N$. For $D\in F$ let $a=a_D$ satisfy $ar\equiv1\pmod D$, $d=1/((2N-1)N^2)$ and $J(D)=[a/D-d,a/D+d]$, of length $\lambda=2d$, the same for all $D\in F$. For an added speed $w$ put $\mathrm{cov}_w(D)=|\{t\in J(D):\nd{wt}<1/N\}|/\lambda\in[0,1]$.
+
+\begin{lemma}[Retained speeds on the whole window]\label{lem:L1}
+For $D\in F$, $t\in J(D)$ and $x\in[N]\setminus\{r\}$: $\nd{xt}\ge1/N$.
+\end{lemma}
+\begin{proof}
+Lemma~\ref{lem:wit} gives $\nd{xa/D}\ge2/D$, so $\nd{xt}\ge2/D-Nd$, and $2/D-1/N-1/((2N-1)N)=(2N-D)/(DN)-1/((2N-1)N)\ge1/(DN)-1/((2N-1)N)\ge0$ since $2N-D\ge1$ and $D\le2N-1$.
+\end{proof}
+
+\begin{lemma}[One arc]\label{lem:L2}
+Let $w>N$ be small, $2w<(2N-1)N(N-2)$, and $D\in F$. The set $\{t\in J(D):\nd{wt}<1/N\}$ lies in one arc $((cN-1)/(wN),(cN+1)/(wN))$, $c\in\ZZ$. If $\mathrm{cov}_w(D)>0$ then $D\mid w-er$ for the integer $e=aw-cD$, the centred residue of $aw$ modulo $D$, and $|e|<w/N^2+2$.
+\end{lemma}
+\begin{proof}
+The arc of $c$ meets $J(D)$ only if $|cD-aw|<D(wd+1/N)$, and $wd+1/N<\frac12$ for small $w$, so $|cD-aw|<D/2$ and two such $c$ would differ by less than one multiple of $D$. Put $e=aw-cD$; then $er\equiv arw\equiv w\pmod D$, and $|e|<D(wd+1/N)\le w/N^2+2$ because $D\le2N-1$.
+
+\emph{Position of the arc.} Use the coordinate $y=(a/D-t)/d$ on $J(D)$, so that $J(D)$ is $[-1,1]$. The centre $c/w$ of the arc has $a/D-c/w=e/(wD)$, so it sits at $y=e/(wDd)=e(2N-1)/(qD)$ with $q=w/N^2$, which has the sign of $e$ and absolute value $|e|(2N-1)/(qD)\ge|e|/q$ because $D\le2N-1$. Its half-width is $1/(wN)$, that is $(2N-1)/(qN)<2/q$ in the coordinate $y$.
+\end{proof}
+
+\begin{lemma}[Coverage of one small speed]\label{lem:L3}
+Let $w>N$ be small. Then $\sum_{D\in F}\mathrm{cov}_w(D)\le8$.
+\end{lemma}
+\begin{proof}
+Put $q=w/N^2$, and let $e(D)=aw-cD$ be the integer of Lemma~\ref{lem:L2} (the centred residue of $a_Dw$ modulo $D$) for those $D\in F$ with $\mathrm{cov}_w(D)>0$.
+
+\emph{Case $w\ne2r$.} \emph{(i) $w-er\ne0$ for every $e$ with $|e|<q+2$.} Suppose $w=er$. As $w>0$ and $r>0$, $e>0$; as $w>N\ge r$, $e\ge2$. Since $r\le N-2<N$ we have $w=er<eN$, so $|e|<q+2=w/N^2+2<e/N+2$, hence $e(1-1/N)<2$ and $e<2N/(N-1)\le3$ (as $N\ge3$). So $e=2$ and $w=2r$, which is the excluded case. \emph{(ii) At most two moduli per value of $e$.} For each integer $e$, the moduli $D\in F$ with $e(D)=e$ divide $w-er$, which is a nonzero integer by (i) with
+\[
+|w-er|\le w+|e|r<w\Bigl(1+\frac1N\Bigr)+2N<\frac{(2N-1)(N-2)(N+1)}2+2N<(N+2)^3,
+\]
+where $|e|<w/N^2+2$, $r<N$ and $w<\Omega=(2N-1)N(N-2)/2$ were used. They are pairwise coprime and each is $\ge N+2$ (as $D\ge N+1+r$), so three of them would have a product $\ge(N+2)^3>|w-er|$ dividing $w-er$; hence there are at most two. \emph{(iii) Coverage of one modulus.} In the coordinate $y$ of Lemma~\ref{lem:L2} the window is $[-1,1]$ and $\mathrm{cov}_w(D)=\frac12\,m(x_D,\rho_D)$, where $m(x,\rho)=|[x-\rho,x+\rho]\cap[-1,1]|$, the arc has centre $x_D=e(2N-1)/(qD)$ and half-width $\rho_D=(2N-1)/(qN)$. Two facts about $m$: it is non-decreasing in $\rho$, and for fixed $\rho$ it is even in $x$ and non-increasing in $|x|$ (for $x\ge0$, $m=2$ if $\rho\ge1+x$, and otherwise $m=\max\bigl(0,\min(2\rho,\,1-x+\rho)\bigr)$, the $0$ occurring for $x>1+\rho$). Now $|x_D|\ge|e|/q$ (because $D\le2N-1$) and $\rho_D<2/q$, so
+\[
+\mathrm{cov}_w(D)\le\gamma_e:=\tfrac12\,\bigl|\{y\in[-1,1]:|y-e/q|\le2/q\}\bigr|;
+\]
+the sign of $x_D$ plays no role. \emph{(iv) The sum over $e$.} Since $\gamma_e=\frac12\int_{-1}^{1}\mathbf 1[\,|qy-e|\le2\,]\,dy$,
+\[
+\sum_{e\in\ZZ}\gamma_e=\tfrac12\int_{-1}^{1}\#\{e\in\ZZ:\ |qy-e|\le2\}\,dy=\tfrac12\cdot2\cdot4=4,
+\]
+because a closed interval of length $4$ contains exactly $4$ integers unless its endpoints are integers, which happens for a null set of $y$. With at most two moduli per $e$, $\sum_{D\in F}\mathrm{cov}_w(D)\le2\sum_e\gamma_e=8$.
+
+\emph{Case $w=2r$} (possible only for $N/2<r\le N-2$, since $w>N$). Here $q=2r/N^2<2/N$. Every $D\in F$ has $D\ge N+2\ge13>4$, and $aw=2ar\equiv2\pmod D$, so the centred residue is $e(D)=2$ for every $D\in F$ (Lemma~\ref{lem:L2} gives $|e|<q+2<3$, and $2-D<-3$). The arc of $D$ has, in the coordinate $y$, centre $x_D=2(2N-1)/(qD)=(2N-1)N^2/(rD)$ and half-width $\rho=(2N-1)N/(2r)$. It meets $(-1,1)$ only if $x_D-\rho<1$, that is only if
+\[
+\frac{(2N-1)N}{r}\Bigl(\frac ND-\frac12\Bigr)<1.
+\]
+For $D\le2N-2$ one has $N/D-\frac12\ge1/(2N-2)$, so the left side is $\ge N(2N-1)/(r(2N-2))>N/r\ge1$ (as $r<N$): no coverage. For $D=2N-1$ it equals $N/(2r)<1$ (as $r>N/2$): coverage is possible. So at most one element of $F$, namely $D=2N-1$, has positive coverage. For it $x_D=N^2/r$ and $\rho=(2N-1)N/(2r)$, so the arc is $[N/(2r),\,N(4N-1)/(2r)]$ in the coordinate $y$; since $\frac12<N/(2r)<1<N(4N-1)/(2r)$, its intersection with $[-1,1]$ is $[N/(2r),1]$, of length $1-N/(2r)$, and $\mathrm{cov}_w(2N-1)=\frac12\bigl(1-\frac N{2r}\bigr)<\frac14<\frac12$. Hence $\sum_{D\in F}\mathrm{cov}_w(D)<\tfrac12\le8$. (The count of the first case is not used here.)
+\end{proof}
+
+\begin{lemma}[Oscillating speeds]\label{lem:L4}
+Let $N\ge10$ and $w\ge\Omega$. Then $\mathrm{cov}_w(D)\le7/N$ for every $D\in F$.
+\end{lemma}
+\begin{proof}
+Lemma~\ref{lem:M} with $J=J(D)$ and $u=w$ gives $\mathrm{cov}_w(D)\le2/N+2(2N-1)N/w\le2/N+4/(N-2)\le7/N$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:L}]
+By Lemma~\ref{lem:R} we may take $V=([N]\setminus\{r\})\cup\{w_1,\dots,w_m\}$ with $m\le k$ and all $w_j>N$ (the setting above). Let $m_s$ of the added speeds be small ($w<\Omega$) and $m_o$ oscillating ($w\ge\Omega$); every added speed is one or the other, so $m_s+m_o=m\le k$. (The letter $p$ of Lemma~\ref{lem:C} does not occur in this proof.) Call $D\in F$ \emph{dead} if $\sum_{j}\mathrm{cov}_{w_j}(D)\ge1$. By Lemma~\ref{lem:L4} the oscillating speeds contribute at most $7m_o/N$ to every $D$, so a dead $D$ has small-speed coverage $\ge1-7m_o/N>0$ (as $N\ge8k+3>7k$). Summing over the dead moduli and using Lemma~\ref{lem:L3} once for each small speed,
+\[
+\#\{\text{dead}\}\,\bigl(1-\tfrac{7m_o}N\bigr)\le8m_s\le8(k-m_o),\qquad\text{so}\qquad \#\{\text{dead}\}\le\frac{8(k-m_o)}{1-7m_o/N}\le8k,
+\]
+the last step being $(k-m_o)N\le k(N-7m_o)$, that is $m_o(N-7k)\ge0$. Since $|F|=8k+1$, some $D\in F$ is not dead: the sets $\{t\in J(D):\nd{w_jt}<1/N\}$, $1\le j\le m$, have total measure $<\lambda=|J(D)|$, so their union has measure $<\lambda$ and cannot contain the closed interval $J(D)$ (no openness is needed). A time $t\in J(D)$ outside the union has $\nd{w_jt}\ge1/N$ for all $j$, and $\nd{xt}\ge1/N$ for all retained $x$ by Lemma~\ref{lem:L1}. Hence $\ML(V)\ge1/N$. Part (a) is Lemma~\ref{lem:win} with $T=8k+1$ and Theorem~\ref{thm:L}; (b) is (a) with the exact thresholds of Table~\ref{tab:lin}; (c) is the count of Lemma~\ref{lem:win}(b) with $T=8k+1$ (Lean: \texttt{copWinT\_of\_cheb\_N}, stated for every $T$); (d) is the proof of Corollary~\ref{cor:S}(a) with Theorem~\ref{thm:L} in place of Theorem~\ref{thm:S}, where the family $F$ for every $r\le N/2$ is supplied by (a), (b) or (c) (by Lemma~\ref{lem:win}, each of them gives the condition of (a)), and $r\le N/2\le N-2$ for $N\ge4$.
+\end{proof}
+With the incidence count $S(w)<18$ in Lemma~\ref{lem:L3} in place of the lattice identity (the number of values of $e$ is $<2q+5$ and each coverage is at most $\min(1,2/q)$) the same argument gives $18k+1$ moduli. The case $w=2r$ is treated separately, exactly as above: there the step ``at most two moduli per value of $e$'' fails (every $D$ has $e=2$), and the argument that only $D=2N-1$ can have positive coverage, with coverage below $\frac12$, replaces it.
+
+\begin{table}[!t]
+\centering
+\small
+\resizebox{\textwidth}{!}{\begin{tabular}{r r r r r | r r r r r}
+\toprule
+$k$ & $M'(k)$ & $M(k)$ & $N'^*(k)$ & $N^*(k)$ & $k$ & $M'(k)$ & $M(k)$ & $N'^*(k)$ & $N^*(k)$ \\
+\midrule
+1 & 11460 & 11280 & 96 & 79 & 21 & 27792 & 172656 & 2920 & 30046 \\
+2 & 12180 & 12360 & 216 & 222 & 22 & 28560 & 187704 & 3066 & 33529 \\
+3 & 12900 & 13980 & 322 & 517 & 23 & 29328 & 203436 & 3169 & 36777 \\
+4 & 13620 & 17424 & 469 & 895 & 24 & 30096 & 219852 & 3414 & 40456 \\
+5 & 14340 & 20304 & 594 & 1410 & 25 & 33024 & 236952 & 3481 & 43980 \\
+6 & 15060 & 23760 & 742 & 2067 & 26 & 33840 & 268440 & 3741 & 47631 \\
+7 & 17040 & 27792 & 829 & 2920 & 27 & 34656 & 287880 & 3937 & 51991 \\
+8 & 17808 & 34656 & 1002 & 3937 & 28 & 35472 & 308040 & 4041 & 56379 \\
+9 & 18576 & 40164 & 1170 & 4891 & 29 & 36288 & 328920 & 4291 & 60570 \\
+10 & 19344 & 46284 & 1290 & 6240 & 30 & 37104 & 350520 & 4354 & 65134 \\
+11 & 20112 & 53016 & 1395 & 7570 & 31 & 37920 & 372840 & 4501 & 69712 \\
+12 & 20880 & 60360 & 1650 & 9060 & 32 & 38736 & 395880 & 4707 & 74655 \\
+13 & 21648 & 72588 & 1707 & 10870 & 33 & 39552 & 419640 & 4810 & 79597 \\
+14 & 22416 & 81660 & 1881 & 12622 & 34 & 40368 & 444120 & 4906 & 85375 \\
+15 & 23184 & 91380 & 2002 & 14784 & 35 & 41184 & 469320 & 5122 & 91054 \\
+16 & 23952 & 101748 & 2101 & 16800 & 36 & 42000 & 495240 & 5304 & 96231 \\
+17 & 24720 & 112764 & 2274 & 19327 & 37 & 42816 & 548292 & 5427 & 102594 \\
+18 & 25488 & 131616 & 2494 & 21342 & 38 & 43632 & 577020 & 5626 & 108262 \\
+19 & 26256 & 144612 & 2694 & 24552 & 39 & 44448 & 606504 & 5916 & 114151 \\
+20 & 27024 & 158292 & 2782 & 27184 & 40 & 45264 & 636744 & 6051 & 120756 \\
+\bottomrule
+\end{tabular}}
+\caption{Thresholds for the hypothesis of Theorem~\ref{thm:S} with the old count $T_k=3k(k+1)+1$ (columns $M$, $N^*$) and the linear count $8k+1$ (columns $M'$, $N'^*$). $M'(k)$ and $M(k)$ are the least $M$ such that $6\ell(T+3\ell+60)+1200\le N$, $\ell=\lfloor\log_2N\rfloor+2$, holds for every $N\ge M$, with $T=8k+1$ and $T=T_k$ respectively. $M'(k)$ for $1\le k\le40$ is the Lean table \texttt{MChebLin} (certified by kernel evaluation); $M(k)$ is the Lean table \texttt{MCheb} for $k\le30$ and, for $31\le k\le40$, the value computed by the same program (not a Lean table). $N^*(k)$ and $N'^*(k)$ are the prime-count thresholds, defined by a finite computation: one more than the last $N\le6\cdot10^6$ at which $\pi(2N)-\pi(\lfloor3N/2\rfloor)<T$, so that the count is at least $T$ for every $N$ with $N^*\le N\le6\cdot10^6$; that it stays at least $T$ for $N>6\cdot10^6$ is assumed for these values, not proved or computed. For $k\le12$ the values $N^*(k)$ are those of Table~\ref{tab:thr}, for which Lean proves richness for all $N\ge N^*(k)$; all other prime-count values, in particular every $N'^*(k)$, are \emph{computed} (exact sieve, to $6\cdot10^6$) and are not Lean statements. Comparison: $M'(k)<M(k)$ for $3\le k\le30$ (Lean, \texttt{mchebLin\_lt\_mcheb}); $M'(2)=12180<12360=M(2)$ (by inspection, Lean has $\le$ for $k=2$); $M'(1)=11460>11280=M(1)$, so Theorem~\ref{thm:S} gives the lower threshold at $k=1$, and likewise for the prime counts ($N^*(1)=79<96=N'^*(1)$).}
+\label{tab:lin}
+\end{table}
+
+\begin{remark}[Coverage, the constant $8$, and the method floor]\label{rem:cov}
+The constant $8$ is a bound, not an observed maximum: exact computations of $\max_F\sum_{D\in F}\mathrm{cov}_w(D)$ over pairwise coprime $F\subseteq I(N,r)$ found $5.03$ at $(N,r,w)=(42,1,3478)$ (exhaustive for $16\le N\le60$, all $r\le N-2$ and all $w\in(N,3N^3]$), $5.20$ at $N=134$ (all $r$, all $w\le20N^2$) and $5.57$ at $N=267$ (every third $r$, $w\le6N^2$). Whether the constant $8$ can be lowered is open. Without pairwise coprimality the sum can exceed $8$: the divisors of one speed $w\le(2N-1)N$ that lie in the window and are coprime to $r$ each have coverage exactly $1$, and there are $19$ of them at $N=400$, $r=1$, $w=221760$ (more at larger $N$), so Lemma~\ref{lem:L3} fails without it. All these figures are computed (exact integer arithmetic) and none is a Lean statement.
+\end{remark}
+
+\begin{remark}[Floor for the method and for the statement]\label{rem:floor}
+For the method (windows and a union bound over the added speeds), a single added speed already makes $3$ pairwise coprime windows unusable at every $N$ tested for $k=1$ (exhaustive for $16\le N\le62$ and $134\le N\le137$, all $r$, all $w$ that can kill a window), and the searches for two and three added speeds found $6$ and $9$; so a family of about $3k+1$ moduli is the least this method can use, against $8k+1$ proved (computed, lower bounds over the bases searched). For the statement itself, $2k$ moduli do not suffice for $k=1,2$: the exceptions $[13]\setminus\{6\}$ with $\{69\}$ and $[20]\setminus\{6\}$ with $\{29,31\}$ (Remark~\ref{rem:sharp}) have windows with $2$ and $4$ pairwise coprime moduli.
+\end{remark}
+
+\begin{remark}[A value form, not claimed]\label{rem:lin}
+A value form $\ML(V)\ge2/(D^*+1)$, with $D^*$ the largest of $8k+1$ pairwise coprime moduli of the window and $D^*+1\ge12k+3$, has been proved at author level by the same count with the window replaced by $J_\theta(D)$ at level $\theta=2/(D^*+1)$. It is not a Lean statement, nothing in this paper uses it, and it is not claimed here.
+\end{remark}
+
+
+%==========================================================================
+\section{Two removed speeds: the coprime closure}\label{sec:Q}
+
+\paragraph{Outline.}
+Let $R=\{r_1<r_2\}\subset(N/2,N]$ and $V=([N]\setminus R)\cup W$ with $W=\{w_1,w_2\}$ above $N$. Zhang's Lemma~5.3 forces each $r_i$ to divide an inserted speed in a tight $V$ (Lemma~\ref{lem:five}). For coprime $r_1,r_2$ this leaves two branches: each speed serves one $r_i$ (Theorem~\ref{thm:Q}(i)) or one speed is a multiple of $r_1r_2$ (Theorem~\ref{thm:Q}(ii); we call this the lcm branch). The first is handled by exhibiting an explicit time (Lemmas~\ref{lem:time}, \ref{lem:caseI}, \ref{lem:caseII}), the second by a covering argument in two classes (Lemmas~\ref{lem:dir}, \ref{lem:gap}); Lemma Z shows why the second branch has no Goddyn--Wong analogue.
+
+\paragraph{Notation of this section.}
+\begin{center}
+\small
+\begin{tabular}{l p{0.72\textwidth}}
+\toprule
+symbol & meaning \\
+\midrule
+$R$, $W$, $A$, $\theta$ & the two removed speeds $\{r_1<r_2\}$; the two inserted speeds; $A=N+1$, $\theta=1/A$ \\
+$s_i$, $\rho$, $r$, $\tau$ & $A-r_i$; in the proof of (i), $\rho=r_1$, $r=r_2$ and $\tau=1/N$ \\
+$m_i$, $\kappa$ & $w_i=m_ir_i$ in (i); $w=\kappa r_1r_2$ in (ii) \\
+$c$, $\eta$, $t$ & a unit $c$ modulo the modulus; the offset $\eta$; the time $t=(c+\eta)/r$ \\
+$E$, $\varphi(\eta)$, $B_1,B_2$ & $E=(2N-r)/N^2$; the phase $m_1(1-\rho\eta)/r$ of $w_1$; the sets of bad offsets \\
+free class, bands & a residue class $c$ modulo $r_i$ that no retained speed covers (defined before Lemma~\ref{lem:gap}); the intervals of offsets that one inserted speed covers \\
+$z$, $E_1$, $p$ & integer and bound in Lemma~\ref{lem:gap}; $p$ is the inserted speed not divisible by $r_1$ or $r_2$ \\
+$g$, $\alpha,\gamma$ & $\gcd(r_1,r_2)$; $r_1/g<r_2/g$ in the proof of (iii) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{lemma}[Zhang's Lemma 5.3, two entries]\label{lem:five}
+If $V$ is tight and $r\in(N/2,N]$ is removed then $r$ divides some inserted speed.
+\end{lemma}
+\begin{proof}
+At $t=1/r$ some $v\in V$ has $\nd{v/r}\le1/(N+1)<1/r$, so $r\mid v$. A multiple of $r$ in $[N]$ other than $r$ would be $\ge2r>N$, so $v$ is inserted.
+\end{proof}
+
+\begin{lemma}[Dirichlet reduction]\label{lem:dir}
+Let $A=N+1$ and $\theta=1/A$. $\ML(V)\le\theta$ iff for $i=1,2$ and every $t=(c+\eta)/r_i$ with $c\in\ZZ$, $0\le\eta\le\theta$, some $v\in V$ has $\nd{vt}\le\theta$.
+\end{lemma}
+\begin{proof}
+Given $t$, Dirichlet gives $q\le N$ and $c$ with $|qt-c|\le\theta$. If $q\notin R$ it is a retained speed covering $t$; if $q=r_i$ write $t=(c+\eta)/r_i$ and replace $t$ by $-t$ if needed to have $\eta\ge0$.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:Q}(i)}
+Write $\rho=r_1$, $r=r_2$ (so $\rho<r\le N<2\rho$), $\tau=1/N$, and let $c$ satisfy $c\rho\equiv-1\pmod r$ (so $\gcd(c,r)=1$). Put $E=(2N-r)/N^2\ge1/N$ and $t=(c+\eta)/r$ for $0<\eta\le E$.
+
+\begin{lemma}[The time $t$]\label{lem:time}
+For $0<\eta\le E$: (a) every $v\in[N]\setminus\{\rho,r\}$ has $\nd{vt}\ge1/N$; (b) $\nd{w_2t}=\nd{m_2\eta}$; (c) $\nd{w_1t}=\nd{\varphi(\eta)}$ with $\varphi(\eta)=m_1(1-\rho\eta)/r$.
+\end{lemma}
+\begin{proof}
+(a) Let $y\in[0,r-1]$ with $vc\equiv y\pmod r$. $y=0$ forces $r\mid v$, so $v=r$ ($v\le N<2r$), excluded. $y=r-1$ forces $v\equiv\rho\pmod r$, so $v\in\{\rho,\rho+r\}$ and $\rho+r>N$; $\rho$ is excluded. So $1\le y\le r-2$; write $vc=y+kr$, then $vt=k+(y+v\eta)/r$ with $1\le y+v\eta\le r-2+(2-r/N)<r$ (as $v\eta\le NE=2-r/N$). Hence $\nd{vt}=\min(y+v\eta,\,r-y-v\eta)/r$, and $y+v\eta\ge1$ gives $\ge1/r\ge1/N$ while $r-y-v\eta\ge2-v\eta\ge r/N$ gives $\ge1/N$. (b) $w_2t=m_2(c+\eta)$. (c) $\rho c=-1+k'r$ gives $\rho t=k'+(\rho\eta-1)/r$ and $w_1t=m_1k'+m_1(\rho\eta-1)/r$.
+\end{proof}
+
+\begin{lemma}[Cases I and I$'$]\label{lem:caseI}
+If $m_1\le r_2-1$ or $m_2\le r_1-1$ then $\ML(V)\ge1/N$.
+\end{lemma}
+\begin{proof}
+Case I ($m_1\le r-1$). Take $\eta=1/(Nm_2)\le E$; then $\nd{m_2\eta}=1/N$, and by Lemma~\ref{lem:time} all speeds except possibly $w_1$ are $\ge1/N$ from an integer. Now $0<\rho\eta<1$ gives $0<\varphi<1$ and $\nd{\varphi}=\min(\varphi,1-\varphi)$. Upper: $\varphi\le m_1/r\le(r-1)/r\le1-1/N$. Lower: $\varphi\ge1/N$ iff $1\ge\frac1N(\rho/m_2+r/m_1)$, true since $\rho/m_2+r/m_1\le(N-1)/2+N/2<N$. Case I$'$ ($m_2\le\rho-1$): use the class modulo $r_1$: put $u=r_2-r_1$, so $1\le u<r_1$ and $\gcd(u,r_1)=1$; take $c'$ with $c'u\equiv-1\pmod{r_1}$, $t=(c'+\eta)/r_1$, $\eta=1/(Nm_1)$. The same computation (with $r_1$ in place of $r$) shows that every $v\in[N]\setminus\{r_1,r_2\}$ is $\ge1/N$ from an integer (the class $y=r_1-1$ contains $u$ and $u+r_1=r_2$; $\nd{ut}=(1-u\eta)/r_1\ge1/N$ since $u\le N-r_1$), $\nd{w_1t}=\nd{m_1\eta}=1/N$, and $\nd{w_2t}=\nd{m_2(1-r_2\eta)/r_1}\ge1/N$ by the same two inequalities.
+\end{proof}
+
+\begin{lemma}[Case II]\label{lem:caseII}
+If $m_1\ge r_2$, $m_2\ge r_1$ and $N\ge10$ then $\ML(V)\ge1/N$.
+\end{lemma}
+\begin{proof}
+Let $B_1=\{\eta\in(0,E]:\nd{m_2\eta}<\tau\}$ and $B_2=\{\eta\in(0,E]:\nd{\varphi(\eta)}<\tau\}$. $B_1$ lies in $(0,\tau/m_2)$ and the intervals $|\eta-j/m_2|<\tau/m_2$, at most $m_2E+\tau$ of them, so $|B_1|\le\tau/m_2+2\tau E+2\tau^2/m_2$. Since $\varphi$ is linear of slope $-m_1\rho/r$, with $S=r/(m_1\rho)$, $|B_2|\le2\tau E+2\tau(1+2\tau)S$. With $m_1\ge r$ and $m_2\ge\rho$: $S\le1/\rho$ and $1/m_2\le1/\rho$, so $|B_1|+|B_2|\le4\tau E+3\tau(1+2\tau)/\rho$. This is $<E$ iff
+\begin{equation}\label{eq:starQ}
+(2N-r_2)(N-4)\,r_1>3N(N+2).
+\end{equation}
+For $N\ge11$: $r_1\ge(N+1)/2$ and $2N-r_2\ge N$, so the left side is $\ge N(N-4)(N+1)/2>3N(N+2)$ iff $N^2-9N-16>0$. For $N=10$ the coprime pairs with $r_1>5$ are $(6,7),(7,8),(7,9),(7,10),(8,9),(9,10)$, with left sides $468,504,462,420,528,540>360$. So some $\eta\in(0,E]$ lies outside $B_1\cup B_2$, and for it Lemma~\ref{lem:time} gives $\nd{vt}\ge1/N$ for every $v\in V$.
+\end{proof}
+Lemmas~\ref{lem:caseI} and~\ref{lem:caseII} prove (i) when $N\ge10$, or $m_1<r_2$, or $m_2<r_1$. For $N\le9$ they leave the case $m_1\ge r_2$, $m_2\ge r_1$ (inequality~\eqref{eq:starQ} fails for $19$ coprime pairs with $N\le9$, computed). That case is closed in Lean: for each of the $23$ coprime pairs $(r_1,r_2)$ with $5\le N\le9$, a finite certificate (an explicit covering of the offsets $\eta$ by finitely many bands, checked by kernel evaluation, and valid for all $m_1\ge r_2$, $m_2\ge r_1$ at once) gives $\ML\ge1/N$, and for $N=4$ a separate finite argument gives $\ML\ge2/9$. These certificates for $4\le N\le9$ are Lean proofs and are not reproduced here; for $N\ge10$ the proof is the written one above (Lemmas~\ref{lem:time}, \ref{lem:caseI}, \ref{lem:caseII}), which also has a Lean counterpart (Table~\ref{tab:status}). Theorem~\ref{thm:Q}(i) as stated is the assembly of the certificates with these lemmas.
+
+\subsection{Proof of Theorem~\ref{thm:Q}(ii)}
+Let $A=N+1$, $s_i=A-r_i$. For a class $c$ that is a unit modulo $r_i$ let $x$ be the largest element of $[N]$ with $cx\equiv-1\pmod{r_i}$ (so $x\in[s_i,N]$). A speed of $[N]\setminus R$ is within $1/A$ of an integer at $t=(c+\eta)/r_i$, $0\le\eta\le1/A$, only if it is congruent to $x$ modulo $r_i$ and then exactly for $\eta\ge s_i/(Ax)$; so if $x$ is removed the class is \emph{free} (no retained speed covers it) and the inserted speeds must cover all of $[0,1/A]$. For a speed $w$ the set of $\eta$ with $\nd{w(c+\eta)/r_i}\le1/A$ is a union of bands $[(zA-r_i)/(Aw),(zA+r_i)/(Aw)]$, pairwise separated by gaps, so a connected set covered by the bands of one speed lies in a single band.
+
+\begin{lemma}[First gap]\label{lem:gap}
+In a free class of modulus $r$ let $w=mr$ and $p\ne w$ be the inserted speeds, and suppose $[0,1/A]$ is covered by their bands. Put $E_1=\min(N/(Am),1/A)$. Then there is an integer $z\ge0$ with $z\equiv-pc\pmod r$, (b) $m(zA-r)\le p$ and (c) $(zA+r)/p\ge AE_1$. If $m\le N$: $z\ge1$, and $z=1$ for $m\ge3$. If $m>N$: $z\in\{0,1\}$ and $z=0$ iff $r\mid p$.
+\end{lemma}
+\begin{proof}
+The interval $(1/(Am),E_1)$ is nonempty, lies in $[0,1/A]$ and contains no point of a band of $w$ (the gap between band $0$ and band $1$ of $w$ is $(1/(Am),N/(Am))$) nor of a retained speed. It is connected, so it lies in one band of $p$, whose lower end is $\le1/(Am)$ and upper end $\ge E_1$; this is (b) and (c). The remaining statements are arithmetic: for $m\le N$, $z=0$ gives $p\le r<A$, impossible, and (b),(c) give $z\le(r/A)(m+1)/(m-1)<2$ for $m\ge3$; for $m>N$, (b),(c) give $z\le r/(N-1)<2$.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:Q}(ii)]
+Let $w=\kappa r_1r_2$ and $p$ be as stated, and suppose $V$ is tight, so $\ML(V)\le1/A$. The class modulo $r_2$ with $cr_1\equiv-1$ is free ($r_1+r_2>N$, so $r_1$ is the only element of $[N]$ congruent to $r_1$, and it is removed), and the class modulo $r_1$ with $c'(r_2-r_1)\equiv-1$ is free (the largest speed congruent to $r_2$ is $r_2$, removed, and $r_2-r_1<s_1$). In both, $w$ is a multiple of the modulus with multipliers $m=\kappa r_1$ and $m'=\kappa r_2$. By Lemma~\ref{lem:dir} both must be covered, so Lemma~\ref{lem:gap} applies in both. If $\kappa=1$: $m=r_1\le N$, $m'=r_2\le N$, $r_1\ge3$, so $z=z'=1$ and $r_1s_2\le p\le A+r_2$, $r_2s_1\le p\le A+r_1$ (in the two classes); then $r_2s_1\le A+r_1=s_1+2r_1$, which forces $s_1=2$, $r_1=N-1$, $r_2=N$, and $2N\le p\le2N$, so $p=2r_2$, excluded. If $\kappa\ge2$: $m,m'>N$, $z,z'\in\{0,1\}$ and $z=0$ iff $r_2\mid p$ (resp.\ $r_1\mid p$), excluded, so $z=z'=1$; then $ms_2\le p\le m(A+r_2)/N$ gives $s_2<3$, similarly $s_1\le2$, so $(s_1,s_2)=(2,1)$, $r_1=N-1$, $r_2=N$; the class modulo $r_1$ gives $p=2m'=2\kappa N$ while the class modulo $r_2$ gives $p\le m(A+r_2)/N=\kappa(N-1)(2N+1)/N<2\kappa N$, a contradiction.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:Q}(iii) and Corollary~\ref{cor:Q}}
+\begin{proof}[Proof of (iii)]
+Let $\alpha=r_1/g<\gamma=r_2/g$. Since $A\ge r_2+1=g\gamma+1$, $(\gamma-1)s_1=(\gamma-1)(A-g\alpha)\ge(\gamma-1)(g+1)\ge\alpha(g+1)>r_1$. So $[s_1,\gamma s_1-1]$ contains more than $r_1$ consecutive integers, hence an integer $\equiv1\pmod{r_1}$, a unit; so $\beta(N,r_1)<\gamma s_1$. If $m\ge\gamma$ then $ms_1>\beta$, and the Goddyn--Wong criterion (tight iff $ms\le\beta$, \cite[Thm.~2.3]{GW}, restated in~\cite[Thm.~1.1]{Z}) shows the set is not tight.
+\end{proof}
+Statement~(iii) is the algebraic reason for (ii): in the lcm branch the multiplier of $w$ on $r_1$ is at least $\gamma$, so the entry $r_1$ always fails the Goddyn--Wong criterion; for $g>1$ it leaves open whether the other inserted speed can rescue it (Section~\ref{sec:open}).
+
+\begin{proof}[Proof of Corollary~\ref{cor:Q}]
+Let $V$ be tight. By Lemma~\ref{lem:five} each $r_i$ divides an inserted speed. If different inserted speeds serve $r_1$ and $r_2$ then $W=\{m_1r_1,m_2r_2\}$ (after naming) and Theorem~\ref{thm:Q}(i) gives $\ML\ge1/N>1/(N+1)$ for $N\ge5$ and $\ML\ge2/9>1/5$ for $N=4$ (the bound $1/N$ is not claimed at $N=4$). If one inserted speed $w$ serves both then $r_1r_2\mid w$ ($\gcd=1$); let $p$ be the other. If $p$ is a multiple of $r_1$ or of $r_2$, then $w$ and $p$ serve different $r_i$ and we are in the first case; otherwise Theorem~\ref{thm:Q}(ii) applies. In every case $V$ is not tight.
+\end{proof}
+
+\paragraph{Worked case.}
+$N=10$, $r_1=7$, $r_2=9$ (coprime), $W=\{14,18\}$ ($m_1=m_2=2$): $N\ge10$ and the star inequality $(2N-r_2)(N-4)r_1=11\cdot6\cdot7=462>360=3N(N+2)$ holds. So $\ML([10]\setminus\{7,9\}\cup\{14,18\})\ge1/10$.
+
+
+
+%==========================================================================
+\section{Two removed speeds with a common factor}\label{sec:T}
+
+\paragraph{Outline.}
+Let $R=\{r_1<r_2\}\subset(N/2,N]$ with $g=\gcd(r_1,r_2)>1$, $A=N+1$, $s_i=A-r_i$, and let $V=([N]\setminus R)\cup W$ with two added speeds $W=\{w_1,w_2\}$ above $N$. For coprime $r_1,r_2$ Theorem~\ref{thm:Q} shows that $V$ is never tight. For $g>1$ tight sets exist ($N=73$, $R=\{70,72\}$, $W=\{140,144\}$, $\ML=1/74$; Section~\ref{sec:open}). This section states three results for $g>1$, all verified in Lean and none proved in this text: Theorem~\ref{thm:T}, the exact tightness criterion when $w_i=m_ir_i$; Theorem~\ref{thm:E}, a sandwich for arbitrary added speeds; and Theorem~\ref{thm:M}, a necessary condition on the value of $\ML$ for any finite set of removed speeds that pairwise share a factor. The proofs follow the covering argument of Section~\ref{sec:Q}: by Lemma~\ref{lem:dir} every time at which a runner of $[N]\setminus R$ is not within $1/A$ of an integer lies on an arc $t=(c+\eta)/r_i$, $0\le\eta\le1/A$, with $c$ a unit modulo $r_i$; on that arc only one retained speed, the largest $x\in[s_i,N]$ with $cx\equiv-1\pmod{r_i}$, can be close to an integer, and the question is which offsets $\eta$ the added speeds cover. The idea of each proof is given after its statement; the proofs themselves are in the Lean development (Section~\ref{sec:lean}).
+
+\paragraph{Failing units and rescue.}
+Let $m_1,m_2\ge2$ and $w_i=m_ir_i$. A \emph{failing unit} of the entry $i$ is an integer $b$ with $\gcd(b,r_i)=1$, $s_i\le b\le N$ and $b<m_is_i$. A failing unit exists iff $\beta(N,r_i)<m_is_i$, that is iff the entry $i$ alone violates the Goddyn--Wong condition $m_is_i\le\beta$ (Theorem~\xA{thm:V} of~\cite{A1}); then $\beta(N,r_i)$ itself is one. For $j\ne i$ a failing unit $b$ of the entry $i$ is \emph{rescued} by $w_j$ if there is an integer $z\ge0$ with
+\[
+zb\equiv w_j\pmod{r_i},\qquad m_i(zA-r_i)\le w_j,\qquad s_iw_j\le b\,(zA+r_i).
+\]
+
+\begin{theorem}[Exact criterion for $\gcd(r_1,r_2)>1$]\label{thm:T}
+Let $N\ge4$, $N/2<r_1<r_2\le N$ with $\gcd(r_1,r_2)>1$, integers $m_1,m_2\ge2$, $w_i=m_ir_i$ and $V=([N]\setminus\{r_1,r_2\})\cup\{w_1,w_2\}$. If every failing unit of the entry $1$ is rescued by $w_2$ and every failing unit of the entry $2$ is rescued by $w_1$, then $\ML(V)\le1/(N+1)$. Conversely, if $m_1+1\le N$ and $m_2+1\le N$ and $\ML(V)\le1/(N+1)$, then every failing unit of each entry is rescued by the other added speed.
+\end{theorem}
+Thus under $m_i\le N-1$, $V$ is tight (or a counterexample to the Lonely Runner Conjecture) iff each failing unit is rescued; if there is no failing unit, both entries satisfy the Goddyn--Wong condition and $V$ is tight by their criterion. In the example $N=73$, $R=\{70,72\}$, $m_1=m_2=2$ one has $s_1=4$, $\beta(73,70)=9$ and $s_2=2$, $\beta(73,72)=5$, so $m_1s_1=8\le9$ and $m_2s_2=4\le5$ and there are no failing units. Restricted to added speeds of the form $m_ir_i$ with $m_i\le N-1$, Conjecture T-X says that a failing unit is never rescued in a tight set; Theorem~\ref{thm:T} turns that into a statement about the congruence and the two inequalities above.
+
+\emph{Idea.} On the arc of a class $c$ with blocker $b$ (a failing unit is a blocker $x=b$ that leaves the offsets $\eta<s_i/(Ab)$ uncovered by retained speeds) the added speed $w_i=m_ir_i$ covers the offsets near $0$ only up to a threshold, which is smaller than $s_i/(Ab)$ exactly when $b<m_is_i$; the remaining offsets must lie in one band of $w_j$ (Lemma~\ref{lem:gap}), and the band index is $z$. The three conditions say that the band is centred at the right residue ($zb\equiv w_j$), starts before the leftmost uncovered offset, and ends after the rightmost.
+
+\begin{theorem}[A sandwich for two added speeds]\label{thm:E}
+Let $N\ge4$, $N/2<r_1<r_2\le N$ with $\gcd(r_1,r_2)>1$, let $w_1,w_2>N$ be integers, and let $V$ be a finite set (vector) of positive integers whose entries are exactly $([N]\setminus\{r_1,r_2\})\cup\{w_1,w_2\}$. For $r\in\{r_1,r_2\}$, a unit $c$ modulo $r$, the integer $X\in[N+1-r,N]$ with $cX\equiv-1\pmod r$ and $0\le\eta\le1/A$, put $t=(c+\eta)/r$ and $\varphi=\min\bigl((1-X\eta)/r,\ \nd{w_1t},\ \nd{w_2t}\bigr)$, and let $E=E(N;r_1,r_2;w_1,w_2)$ be the supremum of $\varphi$ over all such $(r,c,\eta)$ (a one-variable problem; $X$ may be a removed speed). Then
+\[
+E\ \le\ \ML(V)\ \le\ \max\Bigl(\frac1{N+1},\,E\Bigr).
+\]
+If $N+1$ divides neither $w_1$ nor $w_2$ then $\ML(V)=\max(1/(N+1),E)$, and for every $\theta>1/(N+1)$, $\ML(V)<\theta$ iff $E<\theta$ (for $\theta=1/N$ this is the criterion for an exception to $\ML\ge1/N$). If $\ML(V)\ge1/(N+1)$, in particular if the Lonely Runner Conjecture holds for $V$, then $\ML(V)=\max(1/(N+1),E)$; if $E\ge1/(N+1)$ then $\ML(V)=E$.
+\end{theorem}
+No iff between $\ML(V)=\max(1/(N+1),E)$ and the divisibility of $w_j$ by $N+1$ is claimed, and the equality when $N+1\mid w_j$ rests on $\ML(V)\ge1/(N+1)$, which is not proved here. The Lean statement of the lower bound $E\le\ML(V)$ needs only that all entries of $V$ are retained speeds or $w_1,w_2$, and that of the upper bound needs no size or divisibility hypothesis on $w_1,w_2$.
+
+\emph{Idea.} The upper bound is Lemma~\ref{lem:dir}: a time not within $1/A$ of an integer at a retained speed lies on an arc, and there $f_V\le\varphi$ at the corresponding point; the lower bound exhibits the point where $\varphi$ is maximal. When $A\nmid w_j$ the time $t=1/A$ is good for $[N]\setminus R$ and for $w_j$, which gives $\ML(V)\ge1/(N+1)$.
+
+\begin{theorem}[Values of $\ML$ for several removed speeds that pairwise share a factor]\label{thm:M}
+Let $N\ge2$ and let $R\subset(N/2,N]$ be a finite set of integers such that $\gcd(r,r')>1$ for all distinct $r,r'\in R$. For $r\in R$ let $m_r\ge2$, let $\beta_r=\beta(N,r)$, and put $D_r=m_rr+\beta_r$. Let $V$ be a finite set of positive integers that contains $[N]\setminus R$ and every $m_rr$, $r\in R$. Let $\tau>1/(N+1)$ with $m_r/D_r\le\tau$ for all $r\in R$, and suppose $\ML(V)=\tau$. Then there is $r_0\in R$ with $\tau=m_{r_0}/D_{r_0}$ and, for integers $a,c$ with $ar_0+1=cD_{r_0}$, every other new speed satisfies
+\[
+\bigl|\,a\,m_{r'}r'-nD_{r_0}\bigr|\ \ge\ m_{r_0}\qquad\text{for all }r'\in R\setminus\{r_0\},\ n\in\ZZ.
+\]
+If moreover every entry of $V$ is either in $[N]\setminus R$ or one of the $m_rr$, the converse holds: such an $r_0$ gives $\ML(V)=\tau$.
+\end{theorem}
+The pair $(a,c)$ is unique modulo $D_{r_0}$ (since $\gcd(r_0,D_{r_0})=1$, $a$ is determined modulo $D_{r_0}$, and $c$ by $a$), and replacing $a$ by $a+D_{r_0}$ changes the quantity $|a\,m_{r'}r'-nD_{r_0}|$ only by a shift of $n$, so the displayed condition does not depend on the choice; the reading ``for all integers $a,c$ with $ar_0+1=cD_{r_0}$'' used here and the reading ``for some such $a,c$'' of the Lean statement coincide.
+For $|R|=1$ this is Theorem~\xA{thm:V} of~\cite{A1}. For $|R|\ge2$ it says that, in the range above $1/(N+1)$, the values of $\ML$ are single-entry values $m_{r_0}/D_{r_0}$, subject to the condition that the other new speeds stay at distance $\ge m_{r_0}/D_{r_0}$ from the witness time $a/D_{r_0}$ of the entry $r_0$.
+
+\emph{Idea.} At the time $a/D_{r_0}$ (the witness time of Theorem~\xA{thm:V} of~\cite{A1} for the entry $r_0$), the retained speeds and the entry $r_0$ itself are at distance $\ge m_{r_0}/D_{r_0}$; the other new speeds $m_{r'}r'$ are at distance at least $m_{r_0}/D_{r_0}$ exactly under the displayed condition. Necessity: a maximizing time lies on an arc of some entry $r_0$ (Lemma~\ref{lem:dir}), and the value of the one-entry tent against the sawtooth of $m_{r_0}r_0$ forces $\tau=m_{r_0}/D_{r_0}$.
+
+%==========================================================================
+\section{Open cases}\label{sec:open}
+
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Closed.} The case $N=5,\dots,9$ with large multipliers and $N=4$ of Theorem~\ref{thm:Q}(i), and the exact criterion for $\gcd(r_1,r_2)>1$, are Lean statements (Theorem~\ref{thm:Q}(i), Theorem~\ref{thm:T}).
+\item \textbf{Several added speeds with $\gcd>1$.} Theorem~\ref{thm:M} is a necessary condition on the value; the exact tightness criterion for $|R|\ge3$ pairwise non-coprime removed speeds, and for added speeds that are not of the form $m_rr$, is not known to us.
+\item \textbf{Conjecture T-X.}\label{conj:TX} For every $N$, every tight two-entry modification with $r_1,r_2>N/2$ and inserted speeds above $N$ comes from~\cite[Thm.~5.1]{Z}, i.e.\ has $W=\{m_1r_1,m_2r_2\}$ with the Goddyn--Wong condition $ms\le\beta$ for both entries. This is Zhang's Question~8.1. It holds for $\gcd=1$ (Corollary~\ref{cor:Q}, $N\ge4$) and is certified by computation for all inserted pairs for $N\le254$ and for multipliers $\le100$ for $N\le2000$; it is open for $\gcd>1$ and large $N$.
+\item \textbf{Common-factor tight sets.} The tight two-entry sets from Zhang's Theorem~5.1 have $\gcd>1$. The first is $N=73$, $R=\{70,72\}$, $W=\{140,144\}$ with $\ML=1/74$ (\cite[Ex.~5.2]{Z}; Lean: \texttt{inst\_73\_70\_72}); in terms of $(s_1,s_2)=(N+1-r_1,N+1-r_2)$ this is the type $(4,2)$, occurring for $N+1\equiv74\pmod{210}$; type $(8,2)$ occurs for $N+1\equiv8\pmod{858}$. An exhaustive computation lists all two-entry sets satisfying the criterion for both entries for $N\le10^7$ ($59{,}805$ pairs $(N;r_1,r_2)$, $62{,}822$ sets); this is computed, not a theorem.
+\item \textbf{Level $1/N$ for $\gcd>1$.} The bound $\ML\ge1/N$ of Theorem~\ref{thm:Q}(i) fails for $\gcd>1$: for $N=8$, $R=\{6,8\}$, $W=\{12,8k\}$ ($k\ge2$) one has $\ML=k/(8k+1)<1/8$ (computed for $w\le3000$); similar families occur at $N=14,20,26$ with $R=(N-2,N)$.
+\item \textbf{The constant $8$ of Theorem~\ref{thm:L}.} Whether $8k+1$ moduli can be replaced by fewer (the observed method floor is about $3k+1$, Remark~\ref{rem:floor}) is open; no argument and no counterexample is known to us.
+\item \textbf{Both removed speeds $\le N/2$ or mixed, $14\le N\le221$.} Theorem~\ref{thm:W} needs $N\ge222$ (Lean); Remark~\ref{rem:Wsharp} covers $N\ge114$ by hand and the rest by computation.
+\end{enumerate}
+
+
+%==========================================================================
+\section{The Lean development}\label{sec:lean}
+
+\paragraph{Setting.}
+Library \texttt{LRSpectrumFull} (Lean v4.30.0, Mathlib), directory \texttt{Sext6/Gap/}, namespace \texttt{LRSpectrumFull.Sext6.Gap}. \texttt{ML v} is a supremum, \texttt{ML v = sSup (Set.range (gap v))}, for \texttt{v : Fin (n+1) $\to\ZZ$}; it is attained (\texttt{exists\_gap\_eq\_ML}). Zero entries give $\ML=0$ and negative entries are allowed, so each statement meant for positive speeds assumes $1\le v_i$ or $0<v_i$.
+
+\paragraph{Conventions per declaration.}
+In the text above $k$ is the bound on the number of added speeds. In Lean the letter \texttt{k} has two meanings, and this is the only place where $k=N-1$ is stated: for the vectors \texttt{vInt k}, \texttt{vFam k r m}, \texttt{wFam k r w}, \texttt{v2Fam k r1 r2 m1 m2} and \texttt{v2G k r1 r2 a b} one has \texttt{k} $=N-1$ (length $N$), while in \texttt{theoremS\_unconditional}, \texttt{ML\_ge\_S\_unconditional}, \texttt{ML\_ge\_robust\_cop} and \texttt{CopWin k N r} \texttt{k} is the number of added speeds. Per declaration:
+\texttt{theoremS\_unconditional}, \texttt{ML\_ge\_S\_unconditional} and \texttt{ML\_ge\_robust\_cop}: $k$ is the number of added speeds, $N$ is a separate argument, and the family is a vector \texttt{v : Fin (n+1) $\to\ZZ$} (here $n$ is unrelated to $N$) each of whose entries is in $[1,N]\setminus\{r\}$ or above $N$, with the number of \emph{indices} $i$ with $v_i>N$ at most $k$. Entries may repeat and a repeated large entry counts with multiplicity, which is a stronger hypothesis than counting distinct values; the set statements of this paper follow by applying the Lean statement to an injective enumeration of the set, and not the other way. Corollary~\ref{cor:S}(a) in Lean needs all entries $\ge1$. \texttt{wFam2 N r w1 w2} is the vector of length $N+1$ with entries $i+1$ for $i<N$, $i+1\ne r$, then $w_1$ at index $r-1$ and $w_2$ at index $N$; $w_1=w_2$ is allowed. \texttt{v2Fam k r1 r2 m1 m2} and \texttt{v2G k r1 r2 a b} have $k=N-1$, length $N$, and carry the inserted speeds at the slots $r_1,r_2$. The vectors \texttt{vInt k}, \texttt{vFam k r m}, \texttt{wFam k r w} have $k=N-1$; \texttt{lemmaZ}, \texttt{betaFam}, \texttt{sFam}, \texttt{Gfam} take $N$. \texttt{CopWin k N r} is $k$-richness with $k$ the number of added speeds. Its definition is \texttt{CopWinT T N r}: a finite set $P$ of naturals with $T\le|P|$, every element in $[N+1+r,2N-1]$ and coprime to $r$, and $P$ pairwise coprime; with $T=3k(k+1)+1$ this is $k$-richness. \texttt{Nstar k} is the table of $N^*(k)$ for $k\le12$ (the value $0$ for other $k$ is never used), and \texttt{NCheb k} $=\max(10^5,67T_k^2)$. \texttt{ChebCond T N} is the decidable condition $6\ell(T+3\ell+60)+1200\le N$ with $\ell=\texttt{Nat.log 2 N}+2$; \texttt{MCheb k} is the table $M(k)$ for $1\le k\le30$ (the value $0$ elsewhere is never used); \texttt{copWin\_cheb\_table}, \texttt{theoremS\_cheb\_table} and \texttt{cor\_a\_cheb\_table} take $1\le k\le30$ and $\texttt{MCheb k}\le N$, and \texttt{Cheb30.CopWinC T N r} is the predicate ``$T$ pairwise coprime moduli in $[N+1+r,2N-1]$, each coprime to $r$'', which is \texttt{CopWinT} by \texttt{copWinT\_of\_copWinC}.
+
+\paragraph{What was checked.}
+{\sloppy The statements of the modules \texttt{KStar*}, \texttt{FinalCore}, \texttt{FS1Final}, \texttt{Robust*}, \texttt{CopWin*}, \texttt{Cheb30*}, \texttt{OE*} and \texttt{Q81*} were compared with the informal statements in a second reading (definitions, statements and docstrings read; most proofs not read). No hypothesis was found unsatisfiable or vacuous. The hypothesis-free declarations (\texttt{copWin\_table}, \texttt{copWin\_large}, \texttt{copWin\_unconditional}, \texttt{ML\_ge\_S\_unconditional}, \texttt{ML\_ge\_robust\_unconditional}, \texttt{cor\_a\_unconditional}, \texttt{cor\_a\_robust\_unconditional}, \texttt{theoremS\_unconditional}, \texttt{theoremW\_unconditional}) were checked not to reach the hypothesis predicate \texttt{DusartPi} (a Prop-valued definition for a prime-count bound, not an axiom) by a closure test on the compiled environment (saved output \texttt{ax2x\_All.out}, the audit of the whole development, build completed, 3691 jobs; modules \texttt{Axioms12} and \texttt{Axioms16}); the conditional \texttt{ML\_ge\_S\_table} does reach it, which is the positive control. The Chebyshev-type bound used for large $N$ is formalised from Stirling's formula and imports nothing beyond Mathlib. The saved outputs of the builds and of \texttt{\#print axioms} are \texttt{ax2x\_All.out}, \texttt{cw\_ax.out} (\texttt{ML\_ge\_robust\_cop, robust\_core\_cop, cor\_a\_cop, ML\_ge\_wFam2\_cop}), \texttt{bo\_ax7.out} (the prime form of Theorem~\ref{thm:S}), \texttt{rcAx.out} (\texttt{cor\_b}), \texttt{axioms8.out} (Theorem~\ref{thm:Q}) and \texttt{bh\_MultiAxioms.out} (\texttt{inst\_73\_70\_72}), \texttt{cheb30fin.out} (the nine declarations \texttt{psiN\_sub\_le\_b30, b30\_le\_psiN, log\_factorial\_le, log\_factorial\_ge, b30\_bounds, psiN\_upper, window\_card\_lower, copWinC\_of\_cheb, copWinC\_of\_cheb\_N} of module \texttt{Cheb30}) and \texttt{t2ax17.out} (the nine declarations \texttt{copWin\_cheb, theoremS\_cheb, cor\_a\_cheb, chebCond\_pow, copWin\_pow, copWin\_cheb\_table, theoremS\_cheb\_table, cor\_a\_cheb\_table, mcheb\_le\_ncheb}, with the closure test: \texttt{DusartPi} is not reachable from \texttt{copWin\_cheb, theoremS\_cheb, cor\_a\_cheb, copWin\_pow} and the three \texttt{\_table} declarations, and is reachable from \texttt{ML\_ge\_S\_table}, the positive control). ``Printed'' axioms are claimed only for the declarations named in these outputs; the other declarations in Table~\ref{tab:status} are bricks used by a printed declaration, so their axioms are bounded by those of the printed ones. The sieve-based table for $13\le k\le24$ in the development (audit module \texttt{Axioms18}, saved output \texttt{t2ax18.out}) is not used and not claimed in this paper. They end with ``Build completed successfully'', print the standard axioms only (or a subset), and contain no \texttt{sorry}. Builds were run with \texttt{lake build} on single modules in the in-place tree; no clean-checkout rebuild has been made.\par}
+
+\paragraph{Modules of Theorems~\ref{thm:Q}(i), \ref{thm:T}, \ref{thm:E} and~\ref{thm:M}.}
+Theorem~\ref{thm:Q}(i) for all multipliers is in the modules \texttt{Q81S1, Q81S2, Q81S3} (the finite certificates for $N=5,\dots,9$, \texttt{theoremC\_five\_nine}) and \texttt{Q81T1, Q81T2} (\texttt{theoremC\_four} for $N=4$; the assembly \texttt{theoremC\_ge5}, \texttt{theoremC\_unif}, \texttt{theoremC\_unif\_cor}); Theorem~\ref{thm:T} is in \texttt{Q81T3} to \texttt{Q81T6} (\texttt{theoremT}, \texttt{theoremT\_if}, \texttt{theoremT\_only\_if}); Theorem~\ref{thm:E} is in \texttt{TwoELower, TwoEUpper, TwoEMain} and Theorem~\ref{thm:M} in \texttt{MultiNecCore, MultiNec}. The audit modules are \texttt{Axioms22} (the $33$ declarations of the \texttt{Q81} modules) and \texttt{Axioms23} (the $20$ declarations of \texttt{TwoE*} and \texttt{MultiNec*}). Conventions. For \texttt{v2Fam k r1 r2 m1 m2} one has $k=N-1$, the vector has length $N$ and is $[N]$ with $r_i$ replaced by $m_ir_i$; \texttt{theoremC\_ge5} needs $5\le N$, $N<2r_1$, $r_1<r_2\le N$, \texttt{Nat.Coprime r1 r2} and $m_1,m_2\ge2$; \texttt{theoremC\_unif} needs $4\le N$ and concludes $\ML\ge2/(2N+1)$. In \texttt{theoremT} the hypotheses are $4\le N$, $N<2r_1$, $r_1<r_2\le N$, $\gcd(r_1,r_2)>1$, $m_i\ge2$ and $m_i+1\le N$, and the conclusion is $\ML\le1/(N+1)$ iff the two rescue conditions of Section~\ref{sec:T} hold (\texttt{theoremT\_if} has no bound on $m_i$). In \texttt{two\_entry\_sandwich} the hypotheses are: $2\le N$, $N<2r_i$, $r_i\le N$, $\neg\texttt{Nat.Coprime r1 r2}$, every entry of the vector is a retained speed or $w_1$ or $w_2$ (\texttt{Within2}), every retained speed and both $w_j$ occur (so $w_1,w_2$ are natural numbers with no size hypothesis); \texttt{ArcSet N r1 r2 w1 w2} is the set of values of $\varphi$ of Theorem~\ref{thm:E}, with \texttt{IsBlock N r c X} the conditions $N+1-r\le X\le N$ and $r\mid cX+1$. In \texttt{multi\_ML\_nec} the family $R$ is a \texttt{Finset}, \texttt{Spec N r m beta} says that $\beta$ is the least $b$ with $N+1\le r+b$ and $\gcd(b,r)=1$ and that $N<2r$, $r\le N$, $m\ge2$, and \texttt{WithinMulti} is the condition that every entry is a retained speed or some $m_rr$. The statements of \texttt{theoremC\_ge5}, \texttt{theoremC\_unif}, \texttt{theoremC\_unif\_cor}, \texttt{theoremT}, \texttt{theoremT\_if}, \texttt{two\_entry\_sandwich}, \texttt{two\_entry\_eq}, \texttt{two\_entry\_lt\_iff}, \texttt{multi\_ML\_nec} and \texttt{multi\_ML\_eq\_iff} and the docstrings of these modules were read against the informal statements; the proofs were not read. The statements of these modules were read again by a second fresh seat (second fresh-seat statement review; hypotheses instantiated at concrete cases: \texttt{theoremC} at $N=7$, $r=(5,6)$, $m=(6,7)$; \texttt{theoremT} at $N=73$, $R=(70,72)$; \texttt{thmX\_iff} of~\cite{A1} at $N=14$, $r=3$; the exception at $N=20$, $r=6$; none vacuous); no Lean run by that reader. Two facts on the form of the statements. In \texttt{theoremT} the word ``tight'' is $\ML\le1/(N+1)$; this is tightness only if $\ML\ge1/(N+1)$ holds for $V$ (the text says ``tight or a counterexample to the Lonely Runner Conjecture''). \texttt{theoremW\_unconditional} is exactly: $N\ge222$, $r\ge1$, $2r\le N$, $w_1,w_2>N$.
+
+\paragraph{Modules of Theorem~\ref{thm:L}.}
+Theorem~\ref{thm:L} is in the modules \texttt{LinLMeas} (measure of the bad set in an interval, arc data), \texttt{LinLCount} (at most two pairwise coprime divisors, the $w=2r$ case, the crude total $\le18$ per added speed), \texttt{LinLCore} (the joint count and the existence of a clean modulus; \texttt{ML\_ge\_robust\_lin}, constant $18$), \texttt{LinLFinal} (corollaries with $18k+1$), \texttt{LinLLattice} (the lattice identity, \texttt{lam\_lattice\_sum}: the sum over $e$ of the window overlaps is at most $8d$), \texttt{LinLCount8} (total $\le8$ per added speed) and \texttt{LinLFinal8} (the statements with $8k+1$, the table \texttt{MChebLin}). The audit module is \texttt{Axioms26}; the saved output is \texttt{linl\_ax.out} (``Build completed successfully (3405 jobs)''): it prints $36$ declarations, $34$ with exactly the three standard axioms and the two comparisons \texttt{mchebLin\_le\_mcheb}, \texttt{mchebLin\_lt\_mcheb} (kernel \texttt{decide}) with no axioms, and no \texttt{sorryAx}. Conventions. In \texttt{ML\_ge\_robust\_lin8} the hypotheses are $1\le k$, $1\le r$, $r+2\le N$, \texttt{CopWinT (8k+1) N r}, a vector \texttt{v : Fin (n+1) $\to\ZZ$} each of whose entries is in $[1,N]\setminus\{r\}$ or above $N$, and at most $k$ \emph{indices} with entry above $N$ (repeats count with multiplicity, as for \texttt{theoremS\_unconditional}); the conclusion is $1/N\le\ML v$. \texttt{theoremS\_linear} replaces \texttt{CopWinT} by the decidable \texttt{ChebCond (8k+1) N} and $1\le r$, $2r\le N$; \texttt{theoremS\_linear\_big} has $10^5\le N$ and $67(8k+1)^2\le N$; \texttt{theoremS\_linear\_table} has $1\le k\le40$ and \texttt{MChebLin k} $\le N$; \texttt{cor\_a\_linear} concludes that every $r\le N/2$ occurs among the entries when $\ML v<1/N$. The ``first form'' with $18k+1$ is \texttt{ML\_ge\_robust\_lin}, \texttt{theoremS\_lin18}, \texttt{cor\_a\_lin18}, \texttt{theoremS\_lin18\_big}. The module \texttt{Gap/All.lean} read on 25 November imports \texttt{Axioms25} and \texttt{Axioms26}; no rebuild of \texttt{Gap.All} after that edit has been observed.
+
+\paragraph{Saved outputs for these modules.}
+\texttt{ax2x\_Axioms22.out}: the $33$ declarations of \texttt{Axioms22} with exactly the three standard axioms, no \texttt{sorryAx}, ``Build completed successfully (2498 jobs)''; it was produced after the last edit of \texttt{Q81S3} (recorded in the hygiene notes as a comment line; the file was written at 10:15 on 25 November; \texttt{Q81S3} is rebuilt in \texttt{ax2x\_Q81S3.out}, \texttt{Q81T1} and \texttt{Q81T2} likewise); the earlier output \texttt{q81t6.out} (built before that edit) is also complete and prints the same $33$ declarations with the same axioms. The older file \texttt{axioms22.out} lists only $20$ of the $33$ names (it was written before the modules \texttt{Q81T3} to \texttt{Q81T6} were added) and is not cited for the others; the complete outputs are \texttt{q81t6.out} and \texttt{ax2x\_Axioms22.out}. \texttt{axioms23.out}: the $20$ declarations of \texttt{Axioms23}, ``Build completed successfully (3211 jobs)'', standard axioms only, no \texttt{sorryAx}. No clean-checkout rebuild has been made.
+
+% The saved axiom outputs named above are in the Lean repository (repro/expected_output); the programs are in code/.
+
+
+%==========================================================================
+\section{Sources consulted and attribution}\label{sec:prior}
+State of the search on 25 November 2026. A negative search is weak evidence, and the search tools used index code hosts, Zenodo and recent arXiv poorly.
+
+\paragraph{Read, with theorem numbers.}
+{\sloppy Goddyn--Wong~\cite{GW}: Lemmas~2.1, 2.2, Thms.~2.3, 2.4, 3.1, Cor.~3.3, Thm.~4.1. Zhang~\cite{Z} v3: Thms.~1.1, 1.2, Lemma~2.4, Prop.~2.6, Thm.~2.9, Thm.~5.1, Ex.~5.2, Lemma~5.3, Cor.~5.4, Thms.~6.3--6.10, Cor.~6.9, Questions~8.1--8.5. Peng~\cite{P} (record 24363090): all sections, in particular Lemmas~4.4, 4.5, Thms.~5.1, 5.2, 6.2, 6.3, 7.1, 7.2, 8.3, 12.1 and Section~14. The repository~\cite{R1337}: folders \texttt{lonely-runner-two-insertions} and \texttt{zhang-deletion-values} (README and proof notes). Yi--Gill--Bu~\cite{YGB}: abstract, Thms.~1.1--1.7, 11.1. Cordella~\cite{C}: Lemma~2.4, Prop.~4.1, Thm.~4.2. Kravitz~\cite{K} (arXiv v1): Sections~1--2, 5, 8--11, 13. Giri--Kravitz (arXiv 2304.01462 v4, Thms.~1.3, 1.4), Jain--Kravitz (journal version, Thms.~1.1--1.5, Lemmas~2.4, 2.5) and Liu's survey (the author's revision copy, Thms.~17, 18): read for statements on deletions or insertions, none of which is used in this paper. The repository folders \texttt{tight-six-speeds}, \texttt{tight-seven-speeds}, \texttt{tight-eight-speeds}, \texttt{tight-nine-speeds}, \texttt{tight-eleven-to-fourteen} and \texttt{loneliness-on-a-hyperplane}: README and proof notes.\par}
+
+\paragraph{Not read, or read in part.}
+The published form of Kravitz (not accessible to us; only arXiv v1 was read) and two preprints.org items, 202611.1941 and 202611.1765 (refused to automated access, known only from a search listing). Peng's second record 24372259 (abstract only). Henea (record 24447626) and Rolling Bear (record 24432050): abstracts and introductions only. The inspection of the Lean claim of the repository~\cite{R1337} folder on two insertions. The full texts of~\cite{YGB},~\cite{C}. The proofs (as opposed to the statements) in the \texttt{tight-} folders of~\cite{R1337}, and its remaining folders. Kanold 1967 (Jacobsthal-function bounds mentioned in a remark of the underlying notes). No search of the literature on prime windows beyond the Chebyshev route used in Lean.
+
+\paragraph{Attribution.}
+The witness times $a/D$ are those of Zhang's Thm.~2.9 and of the standard Lonely Runner constructions; Lemma~\ref{lem:wit} adds the three excluded residue classes for an added speed. The coprime closure answers a special case of a question of Zhang. The statement that Theorem~\ref{thm:S}, Corollary~\ref{cor:S} and Theorem~\ref{thm:Q} are absent from the texts above concerns those texts only.
+
+\section*{Use of AI}
+The mathematical ideas, proofs, computations, Lean code and text of this paper were produced with substantial assistance from AI systems (Anthropic's Claude models), working under the direction of the author, V. Bonfioli, who selected the problems, set the standards of verification, reviewed the results and takes responsibility for the contents. Every statement marked Lean-verified is checked by the Lean kernel and the printed axiom lists, not by the author or the AI systems; computed statements come from the programs in the accompanying repository; statements labelled by hand are not machine-checked. In Table~\ref{tab:status}, the arguments marked reviewed were re-derived by a second pass that did not write them, and the sharpness examples and tables are computed. The arguments have not been refereed.
+
+% TODO(author): titles and full author names for P, YGB, C, R1337.
+\begin{thebibliography}{99}
+\bibitem{A1} V.~Bonfioli, \emph{Exact loneliness values of dilated one-entry replacements of $\{1,\dots,N\}$}, companion paper, draft of 25 November 2026, not released.
+\bibitem{L} D.~D.-F.~Liu, \emph{From rainbow to the lonely runner: a survey on coloring parameters of distance graphs}, Taiwanese J.\ Math.\ \textbf{12} (2008), 851--871; theorem numbers refer to the author's revision copy.
+\bibitem{GW} L.~Goddyn and E.~B.~Wong, \emph{Tight instances of the lonely runner}, Integers \textbf{6} (2006), \#A38.
+\bibitem{Z} Y.~Zhang, \emph{Tight instances of the Lonely Runner Conjecture: one-entry modifications and the growth of speeds}, arXiv:2608.13599v3 (18 Oct 2026).
+\bibitem{FS} H.~T.~Fan and A.~Sun, \emph{Amending the Lonely Runner Spectrum Conjecture}, arXiv:2306.10417v2 (30 Jan 2026); Electron.\ J.\ Combin.\ \textbf{33}(1) (2026), P1.38.
+\bibitem{K} N.~Kravitz, \emph{Barely lonely runners and very lonely runners}, arXiv:1912.06034; Combin.\ Theory \textbf{1} (2021), \#17.
+\bibitem{P} Peng, Zenodo record 24363090 (19 Nov 2026), unrefereed, with Lean~4 code.
+\bibitem{YGB} Yi, Gill and Bu, \emph{Four runners that are barely lonely}, arXiv:2610.40694 (28 Oct 2026).
+\bibitem{C} Cordella, arXiv:2609.03444.
+\bibitem{R1337} 1337isnot1337, \emph{solved-conjectures}, GitHub repository, folders named in Section~\ref{sec:prior}; unrefereed, accessed 2026-11-24 and 2026-11-25.
+\bibitem{W} J.~M.~Wills, \emph{Zur simultanen homogenen diophantischen Approximation I}, Monatsh.\ Math.\ \textbf{72} (1968), 254--263.
+\end{thebibliography}
+
+\end{document}
